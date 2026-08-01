@@ -4112,6 +4112,16 @@ function renderCompany(sq) {
     _syncing = false;
     _ready = true;
 
+    // Firebase 是空的 → 把本機 localStorage 資料全部上傳
+    for (const [fbk, cfg2] of Object.entries(KEY_MAP)) {
+      if (data[fbk] === undefined) {
+        const lsVal = localStorage.getItem(cfg2.ls);
+        if (lsVal && lsVal !== 'null' && lsVal !== '[]' && lsVal !== '{}') {
+          try { db.ref('ts/' + fbk).set(JSON.parse(lsVal)).catch(()=>{}); } catch(e) {}
+        }
+      }
+    }
+
     // 即時監聽：其他裝置有變更時自動更新
     db.ref('ts').on('value', snap2 => {
       if (!_ready) return;
