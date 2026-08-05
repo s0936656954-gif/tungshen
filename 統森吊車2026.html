@@ -1363,6 +1363,11 @@ function renderTodoBar(){
     if(nextDue<now) nextDue=new Date(yr, mo+1, r.payDay); // 本月已過 → 算下個月
     // 若貸款已到期（maturity < today）則不顯示
     if(r.maturity && new Date(r.maturity)<now) return;
+    // 若本期已付（paidDate 在本次應繳月份）則不顯示
+    if(r.paid && r.paidDate){
+      var pd=new Date(r.paidDate); pd.setHours(0,0,0,0);
+      if(pd.getFullYear()===nextDue.getFullYear() && pd.getMonth()===nextDue.getMonth()) return;
+    }
     var dueDateStr=nextDue.getFullYear()+'-'+String(nextDue.getMonth()+1).padStart(2,'0')+'-'+String(nextDue.getDate()).padStart(2,'0');
     items.push({
       tag:'🚛 貸款繳款', tagBg:'#e8d5ff', tagCol:'#5a1a8c',
