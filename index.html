@@ -15,7 +15,11 @@ body{font-family:'Microsoft JhengHei','微軟正黑體',Arial,sans-serif;backgro
 .sc .lb{font-size:11px;color:#666;margin-bottom:3px;}
 .sc .vl{font-size:20px;font-weight:700;color:#1a3a5c;}
 .sc.green{border-color:#b7e4c7;background:#f0fff4;}.sc.green .vl{color:#1a6b3c;}
+.sc.yellow{border-color:#ffe08a;background:#fffde7;}.sc.yellow .vl{color:#856404;}
 .sc.red{border-color:#f5c6cb;background:#fff5f5;}.sc.red .vl{color:#c0392b;}
+.sc.gray{border-color:#ccc;background:#f5f5f5;opacity:.6;}
+.todo-tag{font-size:10px;font-weight:600;padding:1px 6px;border-radius:10px;display:inline-block;margin-bottom:4px;}
+.todo-name{font-size:12px;color:#444;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px;}
 .section-toggle{display:flex;background:#fff;border-bottom:2px solid #e8e8e8;}
 .sec-btn{padding:12px 28px;cursor:pointer;border:none;background:none;font-size:15px;font-family:inherit;color:#666;font-weight:600;border-bottom:3px solid transparent;margin-bottom:-2px;transition:all .2s;}
 .sec-btn.active{color:#1a3a5c;border-bottom-color:#1a3a5c;}
@@ -112,13 +116,26 @@ footer{text-align:center;padding:14px;color:#999;font-size:12px;}
   <div><h1>統森吊車作業記錄</h1><p>2026年度出車紀錄管理系統</p></div>
 </div>
 
-<div class="stats-bar">
-  <div class="sc"><div class="lb">總出車筆數</div><div class="vl" id="sTotalCount">—</div></div>
-  <div class="sc green"><div class="lb">總金額（元）</div><div class="vl" id="sTotalAmt">—</div></div>
-  <div class="sc red"><div class="lb">未收帳（筆）</div><div class="vl" id="sUnpaid">—</div></div>
-  <div class="sc"><div class="lb">客戶數</div><div class="vl" id="sClients">—</div></div>
-  <div class="sc"><div class="lb">篩選後筆數</div><div class="vl" id="sFiltered">—</div></div>
-  <div class="sc green"><div class="lb">篩選後金額</div><div class="vl" id="sFilteredAmt">—</div></div>
+<div class="stats-bar" style="align-items:center">
+  <div id="todoCards" style="display:flex;gap:8px;flex-wrap:wrap;flex:1;align-items:stretch"></div>
+</div>
+
+<!-- 簽單截止 Modal -->
+<div class="modal-overlay" id="slipDeadlineModal" onclick="if(event.target===this)closeSlipDeadlineModal()">
+  <div class="modal" style="width:380px">
+    <h2>📋 簽單截止日</h2>
+    <input type="hidden" id="sd_id">
+    <div class="fr"><label>客戶名稱</label><input type="text" id="sd_client" placeholder="如 中和、豐譽"></div>
+    <div class="fr"><label>截止日期</label><input type="date" id="sd_deadline"></div>
+    <div class="fr"><label>備註</label><input type="text" id="sd_note" placeholder="如 月底前寄回、需蓋章"></div>
+    <div style="display:flex;gap:8px;justify-content:space-between;margin-top:16px">
+      <button class="btn" style="background:#e74c3c;color:#fff" id="sd_delBtn" onclick="deleteSlipDeadline()" style="display:none">刪除</button>
+      <div style="display:flex;gap:8px;margin-left:auto">
+        <button class="btn" style="background:#aaa;color:#fff" onclick="closeSlipDeadlineModal()">取消</button>
+        <button class="btn btn-add" onclick="saveSlipDeadline()">儲存</button>
+      </div>
+    </div>
+  </div>
 </div>
 
 <div class="section-toggle">
@@ -162,6 +179,11 @@ footer{text-align:center;padding:14px;color:#999;font-size:12px;}
       <option value="">全部狀態</option>
       <option value="1">已給簽單 ✓</option><option value="0">未標記</option>
     </select>
+    <select id="slipFilter" onchange="applyFilters()">
+      <option value="">單給全部</option>
+      <option value="1">已單給 ✓</option>
+      <option value="0">未單給 ⚠</option>
+    </select>
     <button class="btn btn-reset" onclick="resetFilters()">重置</button>
     <button class="btn btn-add" onclick="openRecModal(null)">＋ 新增出車</button>
   </div>
@@ -174,15 +196,18 @@ footer{text-align:center;padding:14px;color:#999;font-size:12px;}
         <th class="sh" id="sh_c"    onclick="showSortMenu('c',this)">叫車單位 <span class="si" id="si_c"></span></th>
         <th class="sh" id="sh_l"    onclick="showSortMenu('l',this)">作業地點 <span class="si" id="si_l"></span></th>
         <th class="sh" id="sh_t"    onclick="showSortMenu('t',this)">噸數 <span class="si" id="si_t"></span></th>
-        <th class="ns" style="width:50px">工時</th>
-        <th class="ns" style="width:50px">客戶加班</th>
+        <th class="sh" id="sh_w"   onclick="showSortMenu('w',this)">工時 <span class="si" id="si_w"></span></th>
+        <th class="sh" id="sh_o"   onclick="showSortMenu('o',this)" style="width:28px">客戶加班 <span class="si" id="si_o"></span></th>
         <th class="ns" style="width:50px;color:#856404">員工OT</th>
-        <th class="ns">副桿</th><th class="ns">吊籃</th><th class="ns">固定</th>
-        <th class="sh" id="sh_j"    onclick="showSortMenu('j',this)">指揮手 <span class="si" id="si_j"></span></th>
-        <th class="sh" id="sh_drv"  onclick="showSortMenu('drv',this)">駕駛 <span class="si" id="si_drv"></span></th>
-        <th class="sh" id="sh_k"    onclick="showSortMenu('k',this)">施作單位 <span class="si" id="si_k"></span></th>
-        <th class="sh" id="sh_a"    onclick="showSortMenu('a',this)">金額 <span class="si" id="si_a"></span></th>
-        <th class="ns">備註</th><th class="ns">操作</th>
+        <th class="sh" id="sh_g"   onclick="showSortMenu('g',this)">副桿 <span class="si" id="si_g"></span></th>
+        <th class="sh" id="sh_b"   onclick="showSortMenu('b',this)">吊籃 <span class="si" id="si_b"></span></th>
+        <th class="sh" id="sh_x"   onclick="showSortMenu('x',this)">固定 <span class="si" id="si_x"></span></th>
+        <th class="sh" id="sh_j"   onclick="showSortMenu('j',this)">指揮手 <span class="si" id="si_j"></span></th>
+        <th class="sh" id="sh_drv" onclick="showSortMenu('drv',this)">駕駛 <span class="si" id="si_drv"></span></th>
+        <th class="sh" id="sh_k"   onclick="showSortMenu('k',this)">施作單位 <span class="si" id="si_k"></span></th>
+        <th class="sh" id="sh_a"   onclick="showSortMenu('a',this)">金額 <span class="si" id="si_a"></span></th>
+        <th class="sh" id="sh_m"   onclick="showSortMenu('m',this)">備註 <span class="si" id="si_m"></span></th>
+        <th class="ns">操作</th>
       </tr></thead>
       <tbody id="mainBody"></tbody>
     </table>
@@ -195,7 +220,7 @@ footer{text-align:center;padding:14px;color:#999;font-size:12px;}
   <div class="toolbar"><button class="btn btn-add" onclick="openRecModal(currentCrane)">＋ 新增出車</button>
     <input type="text" id="craneSearchBox" placeholder="搜尋客戶、地點、備註…" oninput="renderCrane()" style="padding:6px 10px;border:1px solid #ddd;border-radius:6px;font-size:13px;width:180px;margin-left:8px">
     <button class="bs" onclick="document.getElementById('craneSearchBox').value='';renderCrane()" style="margin-left:2px">✕</button>
-    <span style="font-size:11px;color:#888;margin-left:12px"><span style="color:#1565c0;font-weight:700">藍色</span> = 已對帳未匯款　<span style="color:#1a7a1a;font-weight:700">綠色</span> = 現金已收或已入帳</span>
+<span style="font-size:11px;color:#888;margin-left:12px"><span style="color:#1565c0;font-weight:700">藍色</span> = 已對帳未匯款　<span style="color:#1a7a1a;font-weight:700">綠色</span> = 現金已收或已入帳</span>
   </div>
   <div class="crane-stats" id="craneStats"></div>
   <div class="crane-month-tabs" id="craneMonthTabs"></div>
@@ -559,6 +584,12 @@ footer{text-align:center;padding:14px;color:#999;font-size:12px;}
 
 <div id="panel-salary" class="panel">
 
+  <div class="section-toggle" style="margin:0 0 16px">
+    <button class="sec-btn active" id="sal-tab-emp" onclick="showSalaryTab('emp',this)">👤 員工資料</button>
+    <button class="sec-btn" id="sal-tab-att" onclick="showSalaryTab('att',this)">📅 出勤</button>
+    <button class="sec-btn" id="sal-tab-pay" onclick="showSalaryTab('pay',this)">💰 薪資記錄</button>
+  </div>
+
   <div id="salary-emp-panel" style="margin-bottom:24px">
     <div class="toolbar">
       <button class="btn btn-add" onclick="openEmpModal(null)">＋ 新增員工</button>
@@ -577,7 +608,51 @@ footer{text-align:center;padding:14px;color:#999;font-size:12px;}
     </div></div>
   </div>
 
-  <div id="salary-pay-panel">
+  <div id="salary-att-panel" style="display:none">
+    <div class="toolbar" style="flex-wrap:wrap;gap:8px">
+      <select id="attMonth" onchange="renderAttCalendar()" style="padding:6px 10px;border:1px solid #ddd;border-radius:6px;font-size:13px"></select>
+      <select id="attEmp" onchange="renderAttCalendar()" style="padding:6px 10px;border:1px solid #ddd;border-radius:6px;font-size:13px">
+        <option value="">選擇員工</option>
+      </select>
+      <button class="btn" style="background:#1a6b3c;color:#fff" onclick="attToPayroll()">📋 帶入薪資單</button>
+      <button class="btn" style="background:#2d6a9f;color:#fff" onclick="addAttHelper()">＋ 新增助手</button>
+      <div id="attExtraHelperTags" style="display:flex;gap:4px;flex-wrap:wrap;align-items:center"></div>
+      <span style="font-size:13px;color:#777;align-self:center">點擊日期格子可設定請假或加班時數</span>
+    </div>
+    <div id="attSummaryBar" style="padding:10px 0 6px;font-size:14px;color:#333"></div>
+    <div id="attCalendar" style="overflow-x:auto"></div>
+
+    <!-- 單日編輯 popup -->
+    <div id="attDayModal" onclick="if(event.target===this)closeAttDayEdit()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;align-items:center;justify-content:center">
+      <div style="background:#fff;border-radius:12px;padding:24px 28px;min-width:280px;box-shadow:0 8px 32px rgba(0,0,0,.2)">
+        <div style="font-size:16px;font-weight:700;margin-bottom:16px;color:#1a3a5c">📅 <span id="attEdit_date"></span></div>
+        <div id="attEdit_leaveRow" style="margin-bottom:14px">
+          <label style="display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer">
+            <input type="checkbox" id="attEdit_leave" style="width:16px;height:16px">
+            <span>請假（勾選後此日不計出勤）</span>
+          </label>
+        </div>
+        <div id="attEdit_otRow" style="margin-bottom:14px">
+          <label style="font-size:13px;color:#555;display:block;margin-bottom:4px">平日加班時數</label>
+          <input type="number" id="attEdit_ot" min="0" max="12" step="0.5" style="width:100%;padding:8px 10px;border:1px solid #ddd;border-radius:6px;font-size:15px">
+        </div>
+        <div id="attEdit_holOtRow" style="margin-bottom:14px">
+          <label style="font-size:13px;color:#856404;display:block;margin-bottom:4px">假日加班時數</label>
+          <input type="number" id="attEdit_holOt" min="0" max="12" step="0.5" style="width:100%;padding:8px 10px;border:1px solid #ddd;border-radius:6px;font-size:15px;margin-bottom:8px">
+          <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;color:#856404">
+            <input type="checkbox" id="attEdit_holBonus" checked style="width:15px;height:15px">
+            <span>計 +500元（若補假則取消勾選）</span>
+          </label>
+        </div>
+        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px">
+          <button class="btn" style="background:#aaa;color:#fff" onclick="closeAttDayEdit()">取消</button>
+          <button class="btn" style="background:#1a6b3c;color:#fff" onclick="saveAttDayEdit()">儲存</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="salary-pay-panel" style="display:none">
     <div class="toolbar">
       <button class="btn btn-add" onclick="openPayModal(null)">＋ 新增薪資記錄</button>
       <select id="salMonthFilter" onchange="renderPayroll()" style="padding:6px 10px;border:1px solid #ddd;border-radius:6px;font-size:13px">
@@ -642,8 +717,20 @@ footer{text-align:center;padding:14px;color:#999;font-size:12px;}
       <div class="fr"><label>工時</label><input type="text" id="e_wt" list="eWtDL" placeholder="半天、一天、出車…"><datalist id="eWtDL"><option value="半天"><option value="一天"><option value="出車"><option value="無趟"><option value="半天+1H"><option value="一天+1H"></datalist></div>
     </div>
     <div class="fr2">
-      <div class="fr"><label>金額（元）</label><input type="number" id="e_amt" placeholder="基本金額"></div>
-      <div class="fr"><label>加班費（元）</label><input type="number" id="e_otamt" placeholder="0（另計加班費）"></div>
+      <div class="fr"><label>吊車金額（元）</label><input type="number" id="e_amt" placeholder="基本金額"></div>
+      <div class="fr"><label>吊車加班費（元）</label><input type="number" id="e_otamt" placeholder="0（另計加班費）"></div>
+    </div>
+    <div class="fr2">
+      <div class="fr"><label>指1費（元）</label><input type="number" id="e_sigAmt" placeholder="指揮手1費用"></div>
+      <div class="fr"><label>指1加班費（元）</label><input type="number" id="e_sigOtAmt" placeholder="0（另計）"></div>
+    </div>
+    <div class="fr2">
+      <div class="fr"><label>指2費（元）</label><input type="number" id="e_sig2Amt" placeholder="指揮手2費用"></div>
+      <div class="fr"><label>指2加班費（元）</label><input type="number" id="e_sig2OtAmt" placeholder="0（另計）"></div>
+    </div>
+    <div class="fr2">
+      <div class="fr"><label>其他備註</label><input type="text" id="e_miscNote" placeholder="品項說明"></div>
+      <div class="fr"><label>其他費用（元）</label><input type="number" id="e_miscAmt" placeholder="金額"></div>
     </div>
     <div class="fr2">
       <div class="fr" style="display:flex;flex-direction:column;justify-content:flex-end"><label style="display:flex;align-items:center;gap:8px;padding:8px 0;cursor:pointer"><input type="checkbox" id="e_sig" style="width:16px;height:16px"> 指揮手</label></div>
@@ -1127,8 +1214,7 @@ function lsGetArr(key){ const v=lsGet(key,[]); return Array.isArray(v)&&v.length
 let newRecords = lsGetArr('tungshen_newrec');
 // 統一日期格式為斜線（與 RAW 資料一致）
 newRecords = newRecords.map(r=>({...r, date:(r.date||'').replace(/-/g,'/')}));
-// 清除備註中的「單給」
-newRecords = newRecords.map(r=>({...r, note:(r.note||'').replace(/單給/g,'').replace(/\s{2,}/g,' ').trim()}));
+// 統一日期格式（備註保留單給供篩選）
 localStorage.setItem('tungshen_newrec', JSON.stringify(newRecords));
 let deletedRaw = new Set(lsGetArr('tungshen_deleted'));
 function saveDeleted(){ localStorage.setItem('tungshen_deleted', JSON.stringify([...deletedRaw])); }
@@ -1190,18 +1276,20 @@ function saveLoanRecords(){ localStorage.setItem('tungshen_loans', JSON.stringif
 
 function allRec() {
   const overriddenIdx = new Set(newRecords.filter(r=>r._rawIdx!=null).map(r=>r._rawIdx));
+  const extraIds = new Set(newRecords.map(r=>r.id)); // 注入記錄的 id 集合，防止與 RAW _id 衝突
   const rawRecs = RAW.map((r,i)=>({
     ...r,
     j: r.j ? 'V' : '',
-    m: (r.m||'').replace(/單給/g,'').replace(/\s{2,}/g,' ').trim(),
+    m: r.m||'',
     f: flagOvr['r'+i]!=null ? (flagOvr['r'+i]?1:0) : r.f,
-    _new:false, _raw:true, _id:'r'+i, _hidden: overriddenIdx.has(i) || deletedRaw.has(i)
+    _new:false, _raw:true, _id:'r'+i, _hidden: overriddenIdx.has(i) || deletedRaw.has(i) || extraIds.has('r'+i)
   })).filter(r=>!r._hidden);
   const extraRecs = newRecords.map(r=>({
     f: flagOvr[r.id]!=null ? (flagOvr[r.id]?1:0) : (r.flag?1:0),
     d:r.date, c:r.client, l:r.loc, t:r.ton, w:r.wt,
     g:r.aux?'V':'', b:r.bas?'V':'', x:r.fix?'V':'', j:r.sig?'V':'', k:r.crane,
-    a:r.amt, oa:r.otamt||'', m:r.note, o:r.ot, p:r.peer, cash:r.cash||false,
+    a:r.amt, oa:r.otamt||'', sa:r.sigAmt||'', soa:r.sigOtAmt||'', sa2:r.sig2Amt||'', soa2:r.sig2OtAmt||'', mn:r.miscNote||'', ma:r.miscAmt||'',
+    m:r.note, o:r.ot, p:r.peer, cash:r.cash||false,
     drv:r.drv||'', early:r.early||false, holiday:r.holiday||false,
     recOtM:r.recOtM||0, recOtN:r.recOtN||0, recOtE:r.recOtE||0,
     _id:r.id, _new:true, _raw:false
@@ -1219,13 +1307,134 @@ function toggleFlag(id) {
   if (document.getElementById('panel-crane').classList.contains('active')) renderCrane();
 }
 
-function updateTop() {
-  const all = allRec();
-  document.getElementById('sTotalCount').textContent = all.length.toLocaleString();
-  document.getElementById('sTotalAmt').textContent = all.reduce((s,r)=>s+(parseFloat(r.a)||0),0).toLocaleString();
-  document.getElementById('sClients').textContent = clients.length;
-  const unpCount = Object.values(monthlyData).filter(d=>d.invoiced&&!d.settled).length;
-  document.getElementById('sUnpaid').textContent = unpCount > 0 ? unpCount+'筆未收' : '0';
+function updateTop() { renderTodoBar(); }
+
+// ── 待辦倒數欄 ──────────────────────────────────────────────
+let slipDeadlines = lsGet('tungshen_slips', []);
+function saveSlipDeadlines(){
+  localStorage.setItem('tungshen_slips', JSON.stringify(slipDeadlines));
+  var _s=JSON.parse(JSON.stringify(slipDeadlines));
+  (function(){var _t=setInterval(function(){if(!window._tsDb)return;clearInterval(_t);window._tsDb.ref('ts/slips').set(_s).catch(function(){});},300);})();
+}
+
+function _daysDiff(dateStr){
+  if(!dateStr) return null;
+  var today=new Date(); today.setHours(0,0,0,0);
+  var d=new Date(dateStr); d.setHours(0,0,0,0);
+  return Math.round((d-today)/(1000*60*60*24));
+}
+
+function _todoCardColor(days){
+  if(days===null) return '';
+  if(days<0)  return 'gray';
+  if(days<=3) return 'red';
+  if(days<=7) return 'yellow';
+  return 'green';
+}
+
+function _todoCardDaysLabel(days){
+  if(days===null) return '—';
+  if(days<0)  return '已逾期 '+(Math.abs(days))+'天';
+  if(days===0) return '今天到期';
+  if(days===1) return '明天到期';
+  return '還有 '+days+' 天';
+}
+
+function renderTodoBar(){
+  var el=document.getElementById('todoCards'); if(!el) return;
+  var items=[];
+  var today=new Date(); today.setHours(0,0,0,0);
+
+  // 支票：未入帳且有 dueDate
+  checkRecs.filter(function(r){ return !r.deposited && r.dueDate; }).forEach(function(r){
+    items.push({
+      tag:'🏦 支票入帳', tagBg:'#d0e3ff', tagCol:'#1a3a5c',
+      name:(r.payer||r.checkNo||'')+(r.amt?' $'+Number(r.amt).toLocaleString():''),
+      date:r.dueDate, days:_daysDiff(r.dueDate),
+      onclick:"showSec('check',document.querySelector('.sec-btn[onclick*=\\'check\\']'))"
+    });
+  });
+
+  // 貸款：有 payDay 的自動計算下一次繳款日，否則用 dueDate
+  loanRecords.filter(function(r){ return r.payDay; }).forEach(function(r){
+    var now=new Date(); now.setHours(0,0,0,0);
+    var yr=now.getFullYear(), mo=now.getMonth(); // 0-based
+    var nextDue=new Date(yr, mo, r.payDay);
+    if(nextDue<now) nextDue=new Date(yr, mo+1, r.payDay); // 本月已過 → 算下個月
+    // 若貸款已到期（maturity < today）則不顯示
+    if(r.maturity && new Date(r.maturity)<now) return;
+    var dueDateStr=nextDue.getFullYear()+'-'+String(nextDue.getMonth()+1).padStart(2,'0')+'-'+String(nextDue.getDate()).padStart(2,'0');
+    items.push({
+      tag:'🚛 貸款繳款', tagBg:'#e8d5ff', tagCol:'#5a1a8c',
+      name:r.name+(r.monthly?' $'+Number(r.monthly).toLocaleString():''),
+      date:dueDateStr, days:_daysDiff(dueDateStr),
+      onclick:"showSec('loan',document.querySelector('.sec-btn[onclick*=\\'loan\\']'))"
+    });
+  });
+
+  // 簽單截止
+  slipDeadlines.forEach(function(r){
+    items.push({
+      tag:'📋 簽單截止', tagBg:'#fde8c8', tagCol:'#7a3b00',
+      name:r.client+(r.note?' · '+r.note:''),
+      date:r.deadline, days:_daysDiff(r.deadline),
+      onclick:"openSlipDeadlineModal('"+r.id+"')",
+      id:r.id
+    });
+  });
+
+  // 只保留 7 天內（含今天）
+  items=items.filter(function(item){ return item.days!==null && item.days>=0 && item.days<=7; });
+
+  // 依天數排序（最緊急在前）
+  items.sort(function(a,b){ return a.days-b.days; });
+
+  if(!items.length){
+    el.innerHTML='<div style="color:#aaa;font-size:13px;align-self:center;padding:4px 8px">目前無待辦事項</div>';
+    return;
+  }
+
+  el.innerHTML=items.map(function(item){
+    var col=_todoCardColor(item.days);
+    var dlabel=_todoCardDaysLabel(item.days);
+    var dateDisp=item.date?item.date.replace(/-/g,'/'):'';
+    return '<div class="sc '+col+'" onclick="'+item.onclick+'" style="cursor:pointer;min-width:140px;max-width:200px;flex:0 0 auto;padding:8px 12px">'
+      +'<div class="todo-tag" style="background:'+item.tagBg+';color:'+item.tagCol+'">'+item.tag+'</div>'
+      +'<div class="todo-name" title="'+item.name+'">'+item.name+'</div>'
+      +'<div class="vl" style="font-size:15px;line-height:1.2">'+dlabel+'</div>'
+      +'<div style="font-size:10px;color:#999;margin-top:2px">'+dateDisp+'</div>'
+      +'</div>';
+  }).join('');
+}
+
+// 簽單截止 modal
+var _editSlipId=null;
+function openSlipDeadlineModal(id){
+  _editSlipId=id||null;
+  var r=id?slipDeadlines.find(function(x){return x.id===id;}):null;
+  document.getElementById('sd_id').value=id||'';
+  document.getElementById('sd_client').value=r?r.client:'';
+  document.getElementById('sd_deadline').value=r?r.deadline:'';
+  document.getElementById('sd_note').value=r?r.note:'';
+  document.getElementById('sd_delBtn').style.display=id?'':'none';
+  document.getElementById('slipDeadlineModal').classList.add('open');
+}
+function closeSlipDeadlineModal(){ document.getElementById('slipDeadlineModal').classList.remove('open'); }
+function saveSlipDeadline(){
+  var client=document.getElementById('sd_client').value.trim();
+  var deadline=document.getElementById('sd_deadline').value;
+  if(!client||!deadline){ alert('請填寫客戶名稱與截止日期'); return; }
+  var rec={id:_editSlipId||Date.now().toString(), client:client, deadline:deadline, note:document.getElementById('sd_note').value.trim()};
+  if(_editSlipId){
+    var i=slipDeadlines.findIndex(function(x){return x.id===_editSlipId;});
+    if(i>=0) slipDeadlines[i]=rec; else slipDeadlines.push(rec);
+  } else { slipDeadlines.push(rec); }
+  saveSlipDeadlines(); closeSlipDeadlineModal(); renderTodoBar();
+}
+function deleteSlipDeadline(){
+  if(!_editSlipId||!confirm('確定刪除？')) return;
+  slipDeadlines=slipDeadlines.filter(function(x){return x.id!==_editSlipId;});
+  saveSlipDeadlines(); closeSlipDeadlineModal(); renderTodoBar();
 }
 
 function showSec(name, btn) {
@@ -1248,7 +1457,9 @@ function showSec(name, btn) {
 let curMonth='all', sortKey='d', sortDir=1, filtered=[], inMonthlyDetail=false, inPayDetail=false;
 
 function buildMainTabs() {
-  const months=[...new Set(RAW.filter(r=>r.d).map(r=>r.d.slice(0,7)))].sort();
+  const rawMonths=RAW.filter(r=>r.d).map(r=>r.d.slice(0,7));
+  const newMonths=newRecords.filter(r=>r.date).map(r=>r.date.slice(0,7).replace(/-/g,'/'));
+  const months=[...new Set([...rawMonths,...newMonths])].sort();
   const el=document.getElementById('mainMonthTabs');
   el.innerHTML='<button class="mtab active" onclick="setMonth(\'all\',this)">全部</button>';
   months.forEach(m=>{
@@ -1291,12 +1502,16 @@ function applyFilters() {
   const ven=document.getElementById('vendorFilter').value;
   const wt=document.getElementById('workTimeFilter').value;
   const fg=document.getElementById('flagFilter').value;
+  const slip=(document.getElementById('slipFilter')||{}).value||'';
   filtered=allRec().filter(r=>{
     if(curMonth!=='all'&&!r.d.startsWith(curMonth)) return false;
     if(cli&&(r.c||'')!==cli) return false;
     if(ven&&(r.k||'')!==ven) return false;
     if(wt&&r.w!==wt) return false;
     if(fg!==''&&String(r.f)!==fg) return false;
+    const hasSlip=(r.m||'').includes('單給');
+    if(slip==='1'&&!hasSlip) return false;
+    if(slip==='0'&&hasSlip) return false;
     if(q&&![r.c,r.l,r.k,r.m,r.j,r.t,r.o].join(' ').toLowerCase().includes(q)) return false;
     for(const [col,vals] of Object.entries(columnFilters)){
       const v=String(col==='d'?(r.d||'').slice(0,10):(r[col]||''));
@@ -1308,9 +1523,9 @@ function applyFilters() {
     if(sortKey==='a'||sortKey==='t'){av=parseFloat(av)||0;bv=parseFloat(bv)||0;}
     return av<bv?-sortDir:av>bv?sortDir:0;
   });
-  const fa=filtered.reduce((s,r)=>s+(parseFloat(r.a)||0),0);
-  document.getElementById('sFiltered').textContent=filtered.length.toLocaleString();
-  document.getElementById('sFilteredAmt').textContent=fa.toLocaleString();
+  const fa=filtered.reduce((s,r)=>s+totalRecAmt(r),0);
+  var sfEl=document.getElementById('sFiltered'); if(sfEl) sfEl.textContent=filtered.length.toLocaleString();
+  var sfaEl=document.getElementById('sFilteredAmt'); if(sfaEl) sfaEl.textContent=fa.toLocaleString();
   renderMain();
 }
 
@@ -1383,7 +1598,7 @@ function smClearFilter(){
   (_sortMenuCtx.applyFn===applyMainSort?applyFilters:_sortMenuCtx.applyFn)(_sortMenuCtx.key, null);
 }
 function updateColFilterIndicators(){
-  ['d','c','l','t','w','k','a','j','drv'].forEach(k=>{
+  ['d','c','l','t','w','o','g','b','x','j','drv','k','a','m'].forEach(k=>{
     const th=document.getElementById('sh_'+k);
     if(th) th.style.background=columnFilters[k]?'#fff3cd':'';
   });
@@ -1426,10 +1641,20 @@ function otBadge(w, o){
 }
 function vMark(v){return v?'<span style="color:#1a6b3c;font-weight:600">V</span>':'';}
 function fmtTon(t){ if(!t&&t!==0) return ''; const n=parseFloat(t); if(isNaN(n)) return String(t); const suffix=String(t).trim().replace(/^[\d.]+/,''); return String(parseInt(n))+suffix; }
-function amtCell(a,oa){
-  if(!a&&!oa) return '<span style="color:#ccc;font-size:11px">點擊填入</span>';
-  let s='<span class="amount">'+(a?parseInt(a).toLocaleString():'0')+'</span>';
-  if(oa&&parseFloat(oa)) s+='<span style="color:#856404;font-size:11px;font-weight:600;margin-left:3px">+'+parseInt(oa).toLocaleString()+'</span>';
+function _sigLine(label,sa,soa,color){
+  if(!sa&&!soa) return '';
+  let s='<div style="color:'+color+'">'+label+' <span style="font-weight:700">'+(sa?parseInt(sa).toLocaleString():'—')+'</span>';
+  if(soa&&parseFloat(soa)) s+=' <span style="color:#856404;font-size:11px;font-weight:600">+'+parseInt(soa).toLocaleString()+'</span>';
+  return s+'</div>';
+}
+function totalRecAmt(r){ return (parseFloat(r.a)||0)+(parseFloat(r.oa)||0)+(parseFloat(r.sa)||0)+(parseFloat(r.soa)||0)+(parseFloat(r.sa2)||0)+(parseFloat(r.soa2)||0)+(parseFloat(r.ma)||0); }
+function amtCell(a,oa,sa,soa,sa2,soa2,mn,ma){
+  if(!a&&!oa&&!sa&&!soa&&!sa2&&!soa2&&!mn&&!ma) return '<span style="color:#ccc;font-size:11px">點擊填入</span>';
+  let s='<div style="line-height:1.5"><div>吊 <span class="amount">'+(a?parseInt(a).toLocaleString():'—')+'</span>';
+  if(oa&&parseFloat(oa)) s+=' <span style="color:#856404;font-size:11px;font-weight:600">+'+parseInt(oa).toLocaleString()+'</span>';
+  s+='</div>'+_sigLine('指1',sa,soa,'#1a6b3c')+_sigLine('指2',sa2,soa2,'#5a3a9c');
+  if(mn||ma) s+='<div style="color:#8a5a00">其 '+(mn?'<span style="font-size:11px">'+mn+'</span> ':'')+'<span style="font-weight:700">'+(ma?parseInt(ma).toLocaleString():'—')+'</span></div>';
+  s+='</div>';
   return s;
 }
 function isMonthSettled(r){
@@ -1444,65 +1669,77 @@ function isMonthInvoiced(r){
   const d=monthlyData[r.c+'|'+month]||{};
   return !!d.invoiced && !d.settled;
 }
+function _sigLineC(label,sa,soa,color){
+  if(!sa&&!soa) return '';
+  let s='<div>'+label+' <span style="color:'+color+';font-weight:700">'+(sa?parseInt(sa).toLocaleString():'—')+'</span>';
+  if(soa&&parseFloat(soa)) s+=' <span style="color:'+color+';font-size:11px;font-weight:600">+'+parseInt(soa).toLocaleString()+'</span>';
+  return s+'</div>';
+}
+function _miscLine(mn,ma,color){
+  if(!mn&&!ma) return '';
+  return '<div style="color:'+color+'">其 '+(mn?'<span style="font-size:11px">'+mn+'</span> ':'')+'<span style="font-weight:700">'+(ma?parseInt(ma).toLocaleString():'—')+'</span></div>';
+}
 function settledAmtCell(r){
-  if(!r.a&&!r.oa) return '<span style="color:#ccc;font-size:11px">點擊填入</span>';
-  let s='<span style="color:#1565c0;font-weight:700">'+(r.a?parseInt(r.a).toLocaleString():'0')+'</span>';
-  if(r.oa&&parseFloat(r.oa)) s+='<span style="color:#1565c0;font-size:11px;font-weight:600;margin-left:3px">+'+parseInt(r.oa).toLocaleString()+'</span>';
+  if(!r.a&&!r.oa&&!r.sa&&!r.soa&&!r.sa2&&!r.soa2&&!r.mn&&!r.ma) return '<span style="color:#ccc;font-size:11px">點擊填入</span>';
+  let s='<div style="line-height:1.5"><div>吊 <span style="color:#1565c0;font-weight:700">'+(r.a?parseInt(r.a).toLocaleString():'—')+'</span>';
+  if(r.oa&&parseFloat(r.oa)) s+=' <span style="color:#1565c0;font-size:11px;font-weight:600">+'+parseInt(r.oa).toLocaleString()+'</span>';
+  s+='</div>'+_sigLineC('指1',r.sa,r.soa,'#1565c0')+_sigLineC('指2',r.sa2,r.soa2,'#1565c0')+_miscLine(r.mn,r.ma,'#1565c0')+'</div>';
   return s;
 }
 function cashAmtCell(r){
-  if(!r.a&&!r.oa) return '<span style="color:#ccc;font-size:11px">點擊填入</span>';
-  let s='<span style="color:#1a7a1a;font-weight:700">'+(r.a?parseInt(r.a).toLocaleString():'0')+'</span>';
-  if(r.oa&&parseFloat(r.oa)) s+='<span style="color:#1a7a1a;font-size:11px;font-weight:600;margin-left:3px">+'+parseInt(r.oa).toLocaleString()+'</span>';
+  if(!r.a&&!r.oa&&!r.sa&&!r.soa&&!r.sa2&&!r.soa2&&!r.mn&&!r.ma) return '<span style="color:#ccc;font-size:11px">點擊填入</span>';
+  let s='<div style="line-height:1.5"><div>吊 <span style="color:#1a7a1a;font-weight:700">'+(r.a?parseInt(r.a).toLocaleString():'—')+'</span>';
+  if(r.oa&&parseFloat(r.oa)) s+=' <span style="color:#1a7a1a;font-size:11px;font-weight:600">+'+parseInt(r.oa).toLocaleString()+'</span>';
+  s+='</div>'+_sigLineC('指1',r.sa,r.soa,'#1a7a1a')+_sigLineC('指2',r.sa2,r.soa2,'#1a7a1a')+_miscLine(r.mn,r.ma,'#1a7a1a')+'</div>';
   return s;
 }
 
-function startAmtEdit(td, id, curAmt, curOa) {
-  td.innerHTML =
-    '<input type="number" id="ae_a" value="'+(curAmt||'')+'" style="width:68px;border:1px solid #2d6a9f;border-radius:3px;padding:2px 5px;font-size:12px;font-family:inherit;" placeholder="金額">'+
-    '<span style="color:#856404;margin:0 1px;font-size:11px">+</span>'+
-    '<input type="number" id="ae_o" value="'+(curOa||'')+'" style="width:52px;border:1px solid #e0a030;border-radius:3px;padding:2px 4px;font-size:11px;font-family:inherit;" placeholder="加班">';
-  const inputs = td.querySelectorAll('input');
-  const ae_a = inputs[0];
-  const ae_o = inputs[1];
+function startAmtEdit(td, id, curAmt, curOa, curSa, curSoa, curSa2, curSoa2, curMn, curMa) {
+  // tab-only 欄位樣式（pointer-events:none 防止誤點）
+  const noClick = 'pointer-events:none;user-select:none;';
+  const numInp = (iid,val,w,col,ph,tabOnly) => '<input type="number" id="'+iid+'" value="'+(val||'')+'" style="width:'+w+'px;border:1px solid '+col+';border-radius:3px;padding:2px 4px;font-size:11px;font-family:inherit;'+(tabOnly?noClick:'')+'" placeholder="'+ph+'">';
+  const txtInp = (iid,val,w,col,ph) => '<input type="text" id="'+iid+'" value="'+(val||'')+'" style="width:'+w+'px;border:1px solid '+col+';border-radius:3px;padding:2px 4px;font-size:11px;font-family:inherit;'+noClick+'" placeholder="'+ph+'">';
+  const row = (label,col,i1,v1,i2,v2) => '<div style="display:flex;align-items:center;gap:2px"><span style="font-size:10px;color:'+col+';width:20px">'+label+'</span>'+numInp(i1,v1,62,col,'金額',i1!=='ae_a')+'<span style="color:#856404;font-size:10px">+</span>'+numInp(i2,v2,48,'#e0a030','加班',true)+'</div>';
+  td.innerHTML = '<div style="display:flex;flex-direction:column;gap:3px;min-width:160px;padding:2px">'+
+    row('吊','#2d6a9f','ae_a',curAmt,'ae_o',curOa)+
+    row('指1','#1a6b3c','ae_s',curSa,'ae_so',curSoa)+
+    row('指2','#5a3a9c','ae_s2',curSa2,'ae_so2',curSoa2)+
+    '<div style="display:flex;align-items:center;gap:2px"><span style="font-size:10px;color:#8a5a00;width:20px">其</span>'+txtInp('ae_mn',curMn,70,'#8a5a00','備註')+numInp('ae_ma',curMa,62,'#8a5a00','費用',true)+'</div>'+
+    '</div>';
+  const allInps = [...td.querySelectorAll('input')];
+  const [ae_a,ae_o,ae_s,ae_so,ae_s2,ae_so2,ae_mn,ae_ma] = allInps;
+  // Tab 鍵時暫時開放 pointer-events 讓焦點能移入
+  allInps.forEach(inp=>{
+    inp.addEventListener('focus', ()=>{ inp.style.pointerEvents='auto'; });
+    inp.addEventListener('blur',  ()=>{ if(inp!==ae_a) inp.style.pointerEvents='none'; });
+  });
   let saved = false;
   function doSave(e) {
     if (saved) return;
     const rf = e && e.relatedTarget;
-    if (rf && (rf===ae_a||rf===ae_o)) return;
+    if (rf && td.contains(rf)) return;
     saved = true;
-    _saveAmtInline(id, ae_a.value, ae_o.value);
+    _saveAmtInline(id, ae_a.value, ae_o.value, ae_s.value, ae_so.value, ae_s2.value, ae_so2.value, ae_mn.value, ae_ma.value);
   }
-  ae_a.onkeydown = e=>{ if(e.key==='Enter'){doSave(null);} if(e.key==='Escape'){saved=true;applyFilters();} };
-  ae_o.onkeydown = e=>{ if(e.key==='Enter'){doSave(null);} if(e.key==='Escape'){saved=true;applyFilters();} };
-  ae_a.onblur = doSave;
-  ae_o.onblur = doSave;
+  allInps.forEach(i=>{
+    i.onkeydown = e=>{ if(e.key==='Enter'){doSave(null);} if(e.key==='Escape'){saved=true;applyFilters();} };
+    i.onblur = doSave;
+  });
   ae_a.focus(); ae_a.select();
 }
 
-function _saveAmtInline(id, amt, oa) {
+function _saveAmtInline(id, amt, oa, sa, soa, sa2, soa2, mn, ma) {
   const all = allRec();
   const r = all.find(x=>x._id===id);
   if (!r) return;
-  const isRaw = id.startsWith('r') && !isNaN(id.slice(1));
-  if (isRaw) {
+  if (_isRawId(id)) {
     const rawIdx = parseInt(id.slice(1));
     const ei = newRecords.findIndex(x=>x._rawIdx===rawIdx);
-    if(ei>=0) {
-      newRecords[ei].amt=amt; newRecords[ei].otamt=oa;
-    } else {
-      newRecords.push({
-        id: Date.now().toString(), _rawIdx: rawIdx,
-        date:(r.d||'').replace(/-/g,'/'), client:r.c||'', loc:r.l||'', crane:r.k||'',
-        ton:r.t||'', wt:r.w||'', sig:r.j||'', flag:r.f===1,
-        aux:r.g==='V', bas:r.b==='V', fix:r.x==='V',
-        ot:r.o||'', note:r.m||'', peer:r.p||'',
-        amt:amt, otamt:oa
-      });
-    }
+    if(ei>=0) { newRecords[ei].amt=amt; newRecords[ei].otamt=oa; newRecords[ei].sigAmt=sa; newRecords[ei].sigOtAmt=soa; newRecords[ei].sig2Amt=sa2; newRecords[ei].sig2OtAmt=soa2; newRecords[ei].miscNote=mn; newRecords[ei].miscAmt=ma; }
+    else newRecords.push(_rawToNew(r, rawIdx, {amt, otamt:oa, sigAmt:sa, sigOtAmt:soa, sig2Amt:sa2, sig2OtAmt:soa2, miscNote:mn, miscAmt:ma}));
   } else {
     const i = newRecords.findIndex(x=>x.id===id);
-    if(i>=0){newRecords[i].amt=amt;newRecords[i].otamt=oa;}
+    if(i>=0){newRecords[i].amt=amt;newRecords[i].otamt=oa;newRecords[i].sigAmt=sa;newRecords[i].sigOtAmt=soa;newRecords[i].sig2Amt=sa2;newRecords[i].sig2OtAmt=soa2;newRecords[i].miscNote=mn;newRecords[i].miscAmt=ma;}
   }
   localStorage.setItem('tungshen_newrec',JSON.stringify(newRecords));
   applyFilters();
@@ -1510,31 +1747,28 @@ function _saveAmtInline(id, amt, oa) {
   updateTop();
 }
 function startWtEdit(td, id, curWt) {
-  const opts = ['半天','一天','出車','無趟','半天+1H','一天+1H'];
-  td.innerHTML = '<div style="display:flex;flex-wrap:wrap;gap:3px;min-width:160px">'+
+  const opts = ['半天','一天','出車','無趟','半天+1H','半天+2H','半天+3H','一天+1H','一天+2H','一天+3H'];
+  const inOpts = opts.includes(curWt);
+  td.innerHTML = '<div style="display:flex;flex-wrap:wrap;gap:3px;min-width:200px;padding:2px">'+
     opts.map(o=>'<button onclick="_saveWtInline(\''+id+'\',\''+o+'\')" style="border:1px solid '+(o===curWt?'#1a3a5c':'#ccc')+';background:'+(o===curWt?'#1a3a5c':'#fff')+';color:'+(o===curWt?'#fff':'#333')+';border-radius:4px;padding:2px 7px;font-size:12px;cursor:pointer;font-family:inherit">'+o+'</button>').join('')+
+    '<input id="_wtCustom" type="text" placeholder="自訂…" value="'+(inOpts?'':_esc(curWt||'')).replace(/"/g,'&quot;')+'" style="width:80px;border:1px solid #2d6a9f;border-radius:4px;padding:2px 6px;font-size:12px;font-family:inherit">'+
     '</div>';
+  const inp = document.getElementById('_wtCustom');
+  if(inp){
+    inp.onkeydown = e=>{ if(e.key==='Enter'&&inp.value.trim()) _saveWtInline(id, inp.value.trim()); if(e.key==='Escape'){applyFilters();} };
+    inp.onblur = ()=>{ if(inp.value.trim() && !opts.includes(inp.value.trim())) _saveWtInline(id, inp.value.trim()); };
+    if(!inOpts && curWt) { inp.focus(); inp.select(); }
+  }
 }
 function _saveWtInline(id, wt) {
   const all = allRec();
   const r = all.find(x=>x._id===id);
   if(!r) return;
-  const isRaw = id.startsWith('r') && !isNaN(id.slice(1));
-  if(isRaw) {
+  if(_isRawId(id)) {
     const rawIdx = parseInt(id.slice(1));
     const ei = newRecords.findIndex(x=>x._rawIdx===rawIdx);
-    if(ei>=0) {
-      newRecords[ei].wt = wt;
-    } else {
-      newRecords.push({
-        id: Date.now().toString(), _rawIdx: rawIdx,
-        date:(r.d||'').replace(/-/g,'/'), client:r.c||'', loc:r.l||'', crane:r.k||'',
-        ton:r.t||'', wt:wt, sig:r.j||'', flag:r.f===1,
-        aux:r.g==='V', bas:r.b==='V', fix:r.x==='V',
-        ot:r.o||'', note:r.m||'', peer:r.p||'',
-        amt:r.a||'', otamt:r.oa||''
-      });
-    }
+    if(ei>=0) { newRecords[ei].wt=wt; }
+    else newRecords.push(_rawToNew(r, rawIdx, {wt}));
   } else {
     const i = newRecords.findIndex(x=>x.id===id);
     if(i>=0) newRecords[i].wt = wt;
@@ -1544,6 +1778,63 @@ function _saveWtInline(id, wt) {
   if(document.getElementById('panel-crane').classList.contains('active')) renderCrane();
   updateTop();
 }
+// ── 通用內聯編輯 ─────────────────────────────────────────────
+const _FLD = {d:'date', c:'client', l:'loc', t:'ton', k:'crane', m:'note'};
+function _esc(s){ return (s||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'"); }
+// 判斷 id 是否為真正的 RAW 索引（非注入記錄）
+function _isRawId(id){ return id.startsWith('r') && !isNaN(id.slice(1)) && !newRecords.find(x=>x.id===id); }
+// RAW 記錄轉存為 newRecord（內聯編輯時用）
+function _rawToNew(r, rawIdx, overrides){
+  return Object.assign({
+    id:Date.now().toString(), _rawIdx:rawIdx,
+    date:(r.d||'').replace(/-/g,'/'), client:r.c||'', loc:r.l||'', crane:r.k||'',
+    ton:r.t||'', wt:r.w||'', sig:r.j?'V':'', flag:r.f===1,
+    aux:r.g==='V', bas:r.b==='V', fix:r.x==='V',
+    ot:r.o||'', note:r.m||'', peer:r.p||'',
+    amt:r.a||'', otamt:r.oa||'', sigAmt:r.sa||'', sigOtAmt:r.soa||'', sig2Amt:r.sa2||'', sig2OtAmt:r.soa2||'', miscNote:r.mn||'', miscAmt:r.ma||''
+  }, overrides);
+}
+
+function startTextEdit(td, id, fld, curVal) {
+  const isDate = fld === 'd';
+  const inp = document.createElement('input');
+  inp.type = isDate ? 'date' : 'text';
+  inp.value = isDate ? (curVal||'').replace(/\//g,'-').slice(0,10) : (curVal||'');
+  inp.style.cssText = 'width:100%;min-width:'+(isDate?'120px':'70px')+';border:1px solid #2d6a9f;border-radius:3px;padding:3px 5px;font-size:12px;font-family:inherit;box-sizing:border-box';
+  td.innerHTML = '';
+  td.appendChild(inp);
+  let saved = false;
+  function doSave() {
+    if(saved) return; saved = true;
+    let val = inp.value.trim();
+    if(isDate) val = val.replace(/-/g,'/');
+    _saveFieldInline(id, fld, val);
+  }
+  inp.onblur = doSave;
+  inp.onkeydown = e => { if(e.key==='Enter') doSave(); if(e.key==='Escape'){saved=true;applyFilters();} };
+  inp.focus(); if(!isDate) inp.select();
+}
+
+function _saveFieldInline(id, fld, val) {
+  const all = allRec();
+  const r = all.find(x=>x._id===id);
+  if(!r) return;
+  const sf = _FLD[fld];
+  if(_isRawId(id)) {
+    const rawIdx = parseInt(id.slice(1));
+    const ei = newRecords.findIndex(x=>x._rawIdx===rawIdx);
+    if(ei>=0) { newRecords[ei][sf]=val; }
+    else { const obj=_rawToNew(r,rawIdx,{}); obj[sf]=val; newRecords.push(obj); }
+  } else {
+    const i = newRecords.findIndex(x=>x.id===id);
+    if(i>=0) newRecords[i][sf]=val;
+  }
+  localStorage.setItem('tungshen_newrec',JSON.stringify(newRecords));
+  applyFilters();
+  if(document.getElementById('panel-crane').classList.contains('active')) renderCrane();
+  updateTop();
+}
+
 function flagBtn(r){
   const on=r.f===1;
   return '<button onclick="toggleFlag(\''+r._id+'\')" style="border:none;background:none;cursor:pointer;padding:2px 4px;font-size:15px;" title="'+(on?'已給簽單（點擊取消）':'點擊標記已給')+'">'+
@@ -1564,12 +1855,17 @@ function rowHtml(r, showDel) {
   const rowStyle = r.holiday ? ' style="background:#fff8e1"' : (r.cash ? ' style="background:#f0fff0"' : '');
   return '<tr class="'+(r.f?'flagged':'')+(r._new?' new-rec':'')+'"'+rowStyle+'>'+
     '<td>'+flagBtn(r)+'</td>'+
-    '<td>'+holidayBadge(r)+r.d+'</td><td><strong>'+r.c+'</strong></td><td>'+r.l+'</td><td>'+fmtTon(r.t)+'</td>'+
-    '<td style="cursor:pointer" title="點擊編輯工時" onclick="startWtEdit(this,\''+r._id+'\',\''+(r.w||'')+'\')">'+(wBadge(r.w)||'<span style="color:#ccc;font-size:11px">填入</span>')+'</td><td>'+otBadge(r.w,r.o)+'</td>'+
+    '<td style="cursor:pointer" onclick="startTextEdit(this,\''+r._id+'\',\'d\',\''+_esc(r.d)+'\')">'+holidayBadge(r)+r.d+'</td>'+
+    '<td style="cursor:pointer" onclick="startTextEdit(this,\''+r._id+'\',\'c\',\''+_esc(r.c)+'\')"><strong>'+r.c+'</strong></td>'+
+    '<td style="cursor:pointer" onclick="startTextEdit(this,\''+r._id+'\',\'l\',\''+_esc(r.l)+'\')">'+r.l+'</td>'+
+    '<td style="cursor:pointer" onclick="startTextEdit(this,\''+r._id+'\',\'t\',\''+_esc(r.t)+'\')">'+fmtTon(r.t)+'</td>'+
+    '<td style="cursor:pointer" title="點擊編輯工時" onclick="startWtEdit(this,\''+r._id+'\',\''+(r.w||'')+'\')">'+(wBadge(r.w)||'<span style="color:#ccc;font-size:11px">填入</span>')+'</td><td style="max-width:60px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+(r.o||'')+'">'+otBadge(r.w,r.o)+'</td>'+
     '<td>'+(()=>{let s=sundayBadge(r);if(r.recOtM||(r.early&&!r.recOtM))s+='<span style="background:#fff3cd;color:#856404;font-size:10px;font-weight:700;padding:1px 4px;border-radius:3px;border:1px solid #f0ad00;display:inline-block;margin:1px">早+'+(r.recOtM||1)+'H</span>';if(r.recOtN)s+='<span style="background:#ffe0b2;color:#e65100;font-size:10px;font-weight:700;padding:1px 4px;border-radius:3px;border:1px solid #ff9800;display:inline-block;margin:1px">午+'+r.recOtN+'H</span>';if(r.recOtE)s+='<span style="background:#ede7f6;color:#4527a0;font-size:10px;font-weight:700;padding:1px 4px;border-radius:3px;border:1px solid #7e57c2;display:inline-block;margin:1px">晚+'+r.recOtE+'H</span>';return s;})()+'</td>'+
     '<td>'+vMark(r.g)+'</td><td>'+vMark(r.b)+'</td><td>'+vMark(r.x)+'</td>'+
-    '<td>'+vMark(r.j)+'</td><td>'+(r.drv?(employees.find(e=>e.id===r.drv)||{name:''}).name:'')+(r.early?'<span style="font-size:10px;color:#856404;margin-left:3px">早</span>':'')+'</td><td>'+r.k+'</td><td style="cursor:pointer;min-width:100px" title="點擊直接編輯金額" onclick="startAmtEdit(this,\''+r._id+'\',\''+(r.a||'')+'\',\''+(r.oa||'')+'\')">'+((r.cash||isMonthSettled(r))?cashAmtCell(r):(inMonthlyDetail||isMonthInvoiced(r))?settledAmtCell(r):amtCell(r.a,r.oa))+'</td>'+
-    '<td style="color:#666;max-width:150px;overflow:hidden;text-overflow:ellipsis">'+r.m+'</td>'+
+    '<td>'+vMark(r.j)+'</td><td>'+(r.drv?(employees.find(e=>e.id===r.drv)||{name:''}).name:'')+(r.early?'<span style="font-size:10px;color:#856404;margin-left:3px">早</span>':'')+'</td>'+
+    '<td style="cursor:default" title="雙擊編輯" ondblclick="startTextEdit(this,\''+r._id+'\',\'k\',\''+_esc(r.k)+'\')">'+r.k+'</td>'+
+    '<td style="cursor:pointer;min-width:100px" title="點擊直接編輯金額" onclick="startAmtEdit(this,\''+r._id+'\',\''+(r.a||'')+'\',\''+(r.oa||'')+'\',\''+(r.sa||'')+'\',\''+(r.soa||'')+'\',\''+(r.sa2||'')+'\',\''+(r.soa2||'')+'\',\''+((r.mn||'').replace(/'/g,'\\\''))+'\',\''+(r.ma||'')+'\')">'+((r.cash||isMonthSettled(r))?cashAmtCell(r):(inMonthlyDetail||isMonthInvoiced(r))?settledAmtCell(r):amtCell(r.a,r.oa,r.sa,r.soa,r.sa2,r.soa2,r.mn,r.ma))+'</td>'+
+    '<td style="cursor:pointer;color:#666;max-width:150px;overflow:hidden;text-overflow:ellipsis" onclick="startTextEdit(this,\''+r._id+'\',\'m\',\''+_esc(r.m)+'\')">'+r.m+'</td>'+
     '<td><button class="bs bs-edit" onclick="openEditModal(\''+r._id+'\')">編輯</button> '+del+'</td></tr>';
 }
 
@@ -1579,10 +1875,10 @@ function craneRowHtml(r) {
   return '<tr class="'+(r.f?'flagged':'')+(r._new?' new-rec':'')+'"'+rowStyle+'>'+
     '<td>'+flagBtn(r)+'</td>'+
     '<td>'+holidayBadge(r)+r.d+'</td><td><strong>'+r.c+'</strong></td><td>'+r.l+'</td><td>'+fmtTon(r.t)+'</td>'+
-    '<td style="cursor:pointer" title="點擊編輯工時" onclick="startWtEdit(this,\''+r._id+'\',\''+(r.w||'')+'\')">'+(wBadge(r.w)||'<span style="color:#ccc;font-size:11px">填入</span>')+'</td><td>'+otBadge(r.w,r.o)+'</td>'+
+    '<td style="cursor:pointer" title="點擊編輯工時" onclick="startWtEdit(this,\''+r._id+'\',\''+(r.w||'')+'\')">'+(wBadge(r.w)||'<span style="color:#ccc;font-size:11px">填入</span>')+'</td><td style="max-width:60px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+(r.o||'')+'">'+otBadge(r.w,r.o)+'</td>'+
     '<td>'+(()=>{let s=sundayBadge(r);if(r.recOtM||(r.early&&!r.recOtM))s+='<span style="background:#fff3cd;color:#856404;font-size:10px;font-weight:700;padding:1px 4px;border-radius:3px;border:1px solid #f0ad00;display:inline-block;margin:1px">早+'+(r.recOtM||1)+'H</span>';if(r.recOtN)s+='<span style="background:#ffe0b2;color:#e65100;font-size:10px;font-weight:700;padding:1px 4px;border-radius:3px;border:1px solid #ff9800;display:inline-block;margin:1px">午+'+r.recOtN+'H</span>';if(r.recOtE)s+='<span style="background:#ede7f6;color:#4527a0;font-size:10px;font-weight:700;padding:1px 4px;border-radius:3px;border:1px solid #7e57c2;display:inline-block;margin:1px">晚+'+r.recOtE+'H</span>';return s;})()+'</td>'+
     '<td>'+vMark(r.g)+'</td><td>'+vMark(r.b)+'</td><td>'+vMark(r.x)+'</td>'+
-    '<td>'+vMark(r.j)+'</td><td style="cursor:pointer;min-width:100px" title="點擊直接編輯金額" onclick="startAmtEdit(this,\''+r._id+'\',\''+(r.a||'')+'\',\''+(r.oa||'')+'\')">'+((r.cash||isMonthSettled(r))?cashAmtCell(r):(inMonthlyDetail||isMonthInvoiced(r))?settledAmtCell(r):amtCell(r.a,r.oa))+'</td>'+
+    '<td>'+vMark(r.j)+'</td><td style="cursor:pointer;min-width:100px" title="點擊直接編輯金額" onclick="startAmtEdit(this,\''+r._id+'\',\''+(r.a||'')+'\',\''+(r.oa||'')+'\',\''+(r.sa||'')+'\',\''+(r.soa||'')+'\',\''+(r.sa2||'')+'\',\''+(r.soa2||'')+'\',\''+((r.mn||'').replace(/'/g,'\\\''))+'\',\''+(r.ma||'')+'\')">'+((r.cash||isMonthSettled(r))?cashAmtCell(r):(inMonthlyDetail||isMonthInvoiced(r))?settledAmtCell(r):amtCell(r.a,r.oa,r.sa,r.soa,r.sa2,r.soa2,r.mn,r.ma))+'</td>'+
     '<td style="color:#666">'+r.m+'</td>'+
     '<td><button class="bs bs-edit" onclick="openEditModal(\''+r._id+'\')">編輯</button> '+del+'</td></tr>';
 }
@@ -1594,8 +1890,8 @@ function renderMain() {
   const sorted = [...nonCash, ...cashRecs];
   document.getElementById('showCount').textContent=sorted.length.toLocaleString();
   document.getElementById('mainNoData').style.display=sorted.length?'none':'block';
-  const totalAmt = nonCash.reduce((s,r)=>s+(parseFloat(r.a)||0)+(parseFloat(r.oa)||0),0);
-  const cashAmt  = cashRecs.reduce((s,r)=>s+(parseFloat(r.a)||0)+(parseFloat(r.oa)||0),0);
+  const totalAmt = nonCash.reduce((s,r)=>s+totalRecAmt(r),0);
+  const cashAmt  = cashRecs.reduce((s,r)=>s+totalRecAmt(r),0);
   const showTax = (document.getElementById('invoiceTaxToggle')||{}).checked;
   const taxAmt  = Math.round(totalAmt * 0.05);
   const totalRow = nonCash.length>=2 ? '<tr style="background:#f0f6ff;font-weight:700;border-top:2px solid #1a3a5c;"><td colspan="12" style="text-align:right;padding:8px 12px;color:#1a3a5c;">對帳合計</td><td><span class="amount">'+totalAmt.toLocaleString()+'</span></td><td colspan="2"></td></tr>' : '';
@@ -1612,7 +1908,7 @@ function renderMain() {
     const peer = peerMatch[1];
     offsetRows = allRec().filter(r => r.k === peer && curMonth !== 'all' && r.d.startsWith(curMonth)).sort((a,b)=>a.d>b.d?1:-1);
     if (offsetRows.length) {
-      const offsetAmt = offsetRows.reduce((s,r)=>s+(parseFloat(r.a)||0)+(parseFloat(r.oa)||0), 0);
+      const offsetAmt = offsetRows.reduce((s,r)=>s+totalRecAmt(r), 0);
       const netAmt    = totalAmt - offsetAmt;
       const netColor  = netAmt >= 0 ? '#1a3a5c' : '#c0392b';
       offsetHTML =
@@ -1631,6 +1927,7 @@ function resetFilters(){
   document.getElementById('vendorFilter').value='';
   document.getElementById('workTimeFilter').value='';
   document.getElementById('flagFilter').value='';
+  const sf=document.getElementById('slipFilter'); if(sf) sf.value='';
   curMonth='all';
   document.querySelectorAll('#mainMonthTabs .mtab').forEach(b=>b.classList.remove('active'));
   document.querySelector('#mainMonthTabs .mtab').classList.add('active');
@@ -1679,6 +1976,57 @@ function buildCraneMonthTabs(rows){
   });
 }
 
+function bulkSetOt(){
+  const q=(document.getElementById('craneSearchBox')||{value:''}).value.trim().toLowerCase();
+  const allRows=allRec().filter(r=>r.k===currentCrane);
+  const rows=(curCraneMonth==='all'?allRows:allRows.filter(r=>r.d.startsWith(curCraneMonth))).filter(r=>{
+    if(!q) return true;
+    return [r.c,r.l,r.m,r.t,r.o].join(' ').toLowerCase().includes(q);
+  });
+  if(!rows.length){ alert('目前沒有可設定的記錄'); return; }
+  const ov=document.createElement('div');
+  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;z-index:9999';
+  ov.innerHTML='<div style="background:#fff;border-radius:10px;padding:24px;min-width:270px;box-shadow:0 8px 32px rgba(0,0,0,.2)">'+
+    '<div style="font-size:15px;font-weight:700;color:#1a3a5c;margin-bottom:4px">批量設定員工OT</div>'+
+    '<div style="font-size:12px;color:#666;margin-bottom:14px">套用至目前顯示的 <strong>'+rows.length+'</strong> 筆紀錄（自動連動出勤計薪）</div>'+
+    '<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:10px">'+
+      '<label style="font-size:13px;display:flex;align-items:center;gap:8px"><span style="width:60px;color:#856404;font-weight:600">早上加班</span><input type="number" id="_bot_m" value="1" min="0" step="0.5" style="width:70px;padding:5px;border:1px solid #ddd;border-radius:5px;font-size:13px"> H</label>'+
+      '<label style="font-size:13px;display:flex;align-items:center;gap:8px"><span style="width:60px;color:#e65100;font-weight:600">中午加班</span><input type="number" id="_bot_n" value="0" min="0" step="0.5" style="width:70px;padding:5px;border:1px solid #ddd;border-radius:5px;font-size:13px"> H</label>'+
+      '<label style="font-size:13px;display:flex;align-items:center;gap:8px"><span style="width:60px;color:#4527a0;font-weight:600">夜間加班</span><input type="number" id="_bot_e" value="1" min="0" step="0.5" style="width:70px;padding:5px;border:1px solid #ddd;border-radius:5px;font-size:13px"> H</label>'+
+    '</div>'+
+    '<div style="font-size:11px;color:#888;margin-bottom:14px">輸入 0 可清除該項 OT</div>'+
+    '<div style="display:flex;gap:8px;justify-content:flex-end">'+
+      '<button onclick="document.body.removeChild(this.closest(\'.bot-ov\'))" style="padding:7px 16px;border:1px solid #ddd;border-radius:6px;background:#fff;cursor:pointer;font-size:13px">取消</button>'+
+      '<button id="_bot_ok" style="padding:7px 16px;border:none;border-radius:6px;background:#1a3a5c;color:#fff;cursor:pointer;font-size:13px;font-weight:600">套用</button>'+
+    '</div>'+
+  '</div>';
+  ov.classList.add('bot-ov');
+  document.body.appendChild(ov);
+  document.getElementById('_bot_m').focus();
+  document.getElementById('_bot_ok').onclick=function(){
+    const m=parseFloat(document.getElementById('_bot_m').value)||0;
+    const n=parseFloat(document.getElementById('_bot_n').value)||0;
+    const e=parseFloat(document.getElementById('_bot_e').value)||0;
+    document.body.removeChild(ov);
+    rows.forEach(function(r){
+      const id=r._id;
+      if(_isRawId(id)){
+        const rawIdx=parseInt(id.slice(1));
+        const ei=newRecords.findIndex(function(x){return x._rawIdx===rawIdx;});
+        if(ei>=0){newRecords[ei].recOtM=m;newRecords[ei].recOtN=n;newRecords[ei].recOtE=e;newRecords[ei].early=m>0;}
+        else{const obj=_rawToNew(r,rawIdx,{});obj.recOtM=m;obj.recOtN=n;obj.recOtE=e;obj.early=m>0;newRecords.push(obj);}
+      } else {
+        const i=newRecords.findIndex(function(x){return x.id===id;});
+        if(i>=0){newRecords[i].recOtM=m;newRecords[i].recOtN=n;newRecords[i].recOtE=e;newRecords[i].early=m>0;}
+      }
+    });
+    localStorage.setItem('tungshen_newrec',JSON.stringify(newRecords));
+    applyFilters();
+    renderCrane();
+    updateTop();
+  };
+}
+
 function renderCrane(){
   const q=(document.getElementById('craneSearchBox')||{value:''}).value.trim().toLowerCase();
   const allRows=allRec().filter(r=>r.k===currentCrane);
@@ -1691,7 +2039,7 @@ function renderCrane(){
     if(craneSortKey==='a'||craneSortKey==='t'){av=parseFloat(av)||0;bv=parseFloat(bv)||0;}
     return av<bv?-craneSortDir:av>bv?craneSortDir:0;
   });
-  const tA=rows.reduce((s,r)=>s+(parseFloat(r.a)||0),0);
+  const tA=rows.reduce((s,r)=>s+totalRecAmt(r),0);
   const half=rows.filter(r=>r.w==='半天').length;
   const full=rows.filter(r=>r.w==='一天').length;
   const mos=[...new Set(rows.filter(r=>r.d).map(r=>r.d.slice(0,7)))].length;
@@ -1699,7 +2047,7 @@ function renderCrane(){
   document.getElementById('craneStats').innerHTML=mk('出車總次數',rows.length)+mk('總金額（元）',tA.toLocaleString(),true)+mk('半天',half)+mk('一天',full)+mk('出車月份數',mos);
   document.getElementById('craneCount').textContent=rows.length;
   document.getElementById('craneNoData').style.display=rows.length?'none':'block';
-  const crTotalAmt = rows.reduce((s,r)=>s+(parseFloat(r.a)||0),0);
+  const crTotalAmt = rows.reduce((s,r)=>s+totalRecAmt(r),0);
   const crTotalRow = rows.length>=2 ? '<tr style="background:#f0f6ff;font-weight:700;border-top:2px solid #1a3a5c;"><td colspan="11" style="text-align:right;padding:8px 12px;color:#1a3a5c;">合計</td><td><span class="amount">'+crTotalAmt.toLocaleString()+'</span></td><td colspan="2"></td></tr>' : '';
   document.getElementById('craneBody').innerHTML=rows.map(r=>craneRowHtml(r)).join('')+crTotalRow;
 }
@@ -1715,11 +2063,17 @@ function openEditModal(id) {
   document.getElementById('e_loc').value = r.l||'';
   // 在吊車管理分頁編輯時鎖定施作單位
   const inCranePanel=document.getElementById('panel-crane').classList.contains('active');
-  setCraneLock(inCranePanel ? (r.k||currentCrane) : '');
+  setCraneLock(inCranePanel ? (r.k||currentCrane) : '', r.k||'');
   document.getElementById('e_ton').value = r.t||'';
-  document.getElementById('e_wt').value = r.w||'半天';
+  document.getElementById('e_wt').value = r.w||'';
   document.getElementById('e_amt').value = r.a||'';
   document.getElementById('e_otamt').value = r.oa||'';
+  document.getElementById('e_sigAmt').value = r.sa||'';
+  document.getElementById('e_sigOtAmt').value = r.soa||'';
+  document.getElementById('e_sig2Amt').value = r.sa2||'';
+  document.getElementById('e_sig2OtAmt').value = r.soa2||'';
+  document.getElementById('e_miscNote').value = r.mn||'';
+  document.getElementById('e_miscAmt').value = r.ma||'';
   document.getElementById('e_sig').checked = !!(r.j);
   document.getElementById('e_aux').checked = r.g==='V';
   document.getElementById('e_bas').checked = r.b==='V';
@@ -1744,8 +2098,9 @@ function saveEdit() {
   const date = document.getElementById('e_date').value;
   if (!date) { alert('請填寫日期'); return; }
   const isNew = id === '';
-  const isRaw = !isNew && id.startsWith('r') && !isNaN(id.slice(1));
-  const existingRec = isNew||isRaw ? null : newRecords.find(x=>x.id===id);
+  const inNew = !isNew && newRecords.find(x=>x.id===id);
+  const isRaw = !isNew && !inNew && id.startsWith('r') && !isNaN(id.slice(1));
+  const existingRec = inNew || null;
   const rec = {
     id: (isNew || isRaw) ? Date.now().toString() : id,
     _rawIdx: isRaw ? parseInt(id.slice(1)) : (existingRec?existingRec._rawIdx:null),
@@ -1756,6 +2111,12 @@ function saveEdit() {
     wt: document.getElementById('e_wt').value,
     amt: document.getElementById('e_amt').value,
     otamt: document.getElementById('e_otamt').value,
+    sigAmt: document.getElementById('e_sigAmt').value,
+    sigOtAmt: document.getElementById('e_sigOtAmt').value,
+    sig2Amt: document.getElementById('e_sig2Amt').value,
+    sig2OtAmt: document.getElementById('e_sig2OtAmt').value,
+    miscNote: document.getElementById('e_miscNote').value,
+    miscAmt: document.getElementById('e_miscAmt').value,
     sig: document.getElementById('e_sig').checked ? 'V' : '',
     flag: document.getElementById('e_flag').checked,
     aux: document.getElementById('e_aux').checked,
@@ -1804,7 +2165,8 @@ function buildDrvSelect(curVal){
   });
   sel.value=curVal||'';
 }
-function setCraneLock(val){
+function setCraneLock(val, freeVal){
+  // val: 鎖定值（吊車管理頁籤用）; freeVal: 非鎖定時的文字框預設值
   const input=document.getElementById('e_crane');
   const locked=document.getElementById('e_crane_locked');
   if(val){
@@ -1812,6 +2174,7 @@ function setCraneLock(val){
     locked.textContent=val; input.value=val;
   } else {
     input.style.display=''; locked.style.display='none';
+    input.value=freeVal||'';
   }
 }
 function openRecModal(cranePreset){
@@ -1820,11 +2183,17 @@ function openRecModal(cranePreset){
   document.getElementById('e_date').value = new Date().toISOString().slice(0,10);
   document.getElementById('e_client').value = '';
   document.getElementById('e_loc').value = '';
-  setCraneLock(cranePreset||'');
+  setCraneLock(cranePreset||'', '');
   document.getElementById('e_ton').value = cranePreset||'';
-  document.getElementById('e_wt').value = '半天';
+  document.getElementById('e_wt').value = '';
   document.getElementById('e_amt').value = '';
   document.getElementById('e_otamt').value = '';
+  document.getElementById('e_sigAmt').value = '';
+  document.getElementById('e_sigOtAmt').value = '';
+  document.getElementById('e_sig2Amt').value = '';
+  document.getElementById('e_sig2OtAmt').value = '';
+  document.getElementById('e_miscNote').value = '';
+  document.getElementById('e_miscAmt').value = '';
   document.getElementById('e_sig').checked = false;
   document.getElementById('e_aux').checked = false;
   document.getElementById('e_bas').checked = false;
@@ -1844,16 +2213,16 @@ function openRecModal(cranePreset){
 
 function delRec(id){
   if(!confirm('確定刪除？'))return;
-  if(id.startsWith('r') && !isNaN(id.slice(1))){
-    // 直接刪除 RAW 記錄
-    deletedRaw.add(parseInt(id.slice(1)));
-    saveDeleted();
-  } else {
-    const rec = newRecords.find(x=>x.id===id);
-    if(rec && rec._rawIdx!=null) deletedRaw.add(rec._rawIdx);
-    saveDeleted();
+  const inNew = newRecords.find(x=>x.id===id);
+  if(inNew){
+    // 注入或手動新增的紀錄
+    if(inNew._rawIdx!=null) deletedRaw.add(inNew._rawIdx);
     newRecords=newRecords.filter(x=>x.id!==id);
+  } else if(id.startsWith('r') && !isNaN(id.slice(1))){
+    // 純 RAW 內建記錄（ID = r + 純數字索引）
+    deletedRaw.add(parseInt(id.slice(1)));
   }
+  saveDeleted();
   localStorage.setItem('tungshen_newrec',JSON.stringify(newRecords));
   applyFilters();
   if(document.getElementById('panel-crane').classList.contains('active'))renderCrane();
@@ -1900,7 +2269,7 @@ function buildMonthlyRows() {
     const month = r.d.slice(0,7).replace('/','-');
     const key = r.c + '|' + month;
     if (!map[key]) map[key] = { client:r.c, month, recv:0, count:0, autoPay:0, autoPayCount:0 };
-    map[key].recv += (parseFloat(r.a)||0) + (parseFloat(r.oa)||0);
+    map[key].recv += totalRecAmt(r);
     map[key].count++;
   });
   // 應付：我們叫同行的車（r.k = 施作單位，排除自己的車）
@@ -1909,7 +2278,7 @@ function buildMonthlyRows() {
     const month = r.d.slice(0,7).replace('/','-');
     const key = r.k + '|' + month;
     if (!map[key]) map[key] = { client:r.k, month, recv:0, count:0, autoPay:0, autoPayCount:0 };
-    map[key].autoPay += (parseFloat(r.a)||0) + (parseFloat(r.oa)||0);
+    map[key].autoPay += totalRecAmt(r);
     map[key].autoPayCount++;
   });
   return Object.values(map).map(r=>{
@@ -2054,10 +2423,21 @@ function printRequestSheet(client, month) {
     const d = r.d.slice(5);
     const wt = r.w||'';
     const ot = r.o ? '（'+r.o+'）' : '';
-    const baseAmt = (parseFloat(r.a)||0)+(parseFloat(r.oa)||0);
     const extraAmt = (r.g==='V'?1000:0)+(r.b==='V'?1000:0)+(r.x==='V'?1000:0);
-    const totalAmt = baseAmt + extraAmt;
+    const rowTotal = totalRecAmt(r) + extraAmt;
     const tonStr = (()=>{const s=fmtTon(r.t);return /\D$/.test(s)?s:s+'T';})();
+    // build amount breakdown lines
+    const amtLines = [];
+    const fmtN = v => parseInt(v)||0;
+    const hasMulti = !!(r.sa||r.soa||r.sa2||r.soa2||r.ma||extraAmt);
+    if(r.a||r.oa) { let l=(hasMulti?'吊 ':'')+fmtN(r.a).toLocaleString(); if(r.oa&&parseFloat(r.oa)) l+=' +'+fmtN(r.oa).toLocaleString(); amtLines.push(l); }
+    if(r.sa||r.soa) { let l='指1 '+fmtN(r.sa).toLocaleString(); if(r.soa&&parseFloat(r.soa)) l+=' +'+fmtN(r.soa).toLocaleString(); amtLines.push(l); }
+    if(r.sa2||r.soa2) { let l='指2 '+fmtN(r.sa2).toLocaleString(); if(r.soa2&&parseFloat(r.soa2)) l+=' +'+fmtN(r.soa2).toLocaleString(); amtLines.push(l); }
+    if(r.mn||r.ma) { amtLines.push((r.mn?r.mn+' ':'')+fmtN(r.ma).toLocaleString()); }
+    if(extraAmt) amtLines.push('加設 '+extraAmt.toLocaleString());
+    const amtHtml = amtLines.length > 1
+      ? amtLines.map(l=>'<div style="font-size:11px;text-align:right">'+l+'</div>').join('')+'<div style="font-weight:bold;border-top:1px solid #000;margin-top:1px">'+rowTotal.toLocaleString()+'</div>'
+      : (rowTotal?rowTotal.toLocaleString():'');
     return '<tr>'+
       '<td>'+d+'</td>'+
       '<td style="text-align:left">'+r.l+'</td>'+
@@ -2067,16 +2447,17 @@ function printRequestSheet(client, month) {
       '<td>'+(r.b==='V'?'✓':'')+'</td>'+
       '<td>'+(r.x==='V'?'✓':'')+'</td>'+
       '<td>'+(r.j?'✓':'')+'</td>'+
-      '<td style="text-align:right">'+(totalAmt?totalAmt.toLocaleString():'')+'</td>'+
+      '<td style="text-align:right;line-height:1.4">'+amtHtml+'</td>'+
       '</tr>';
   }).join('');
-  const total = recs.reduce((s,r)=>s+(parseFloat(r.a)||0)+(parseFloat(r.oa)||0)+(r.g==='V'?1000:0)+(r.b==='V'?1000:0)+(r.x==='V'?1000:0),0);
+  const total = recs.reduce((s,r)=>s+totalRecAmt(r)+(r.g==='V'?1000:0)+(r.b==='V'?1000:0)+(r.x==='V'?1000:0),0);
   const alreadyInvoiced = !!(monthlyData[client+'|'+month] && monthlyData[client+'|'+month].invoiced);
+  const showTaxOnOpen = !!(document.getElementById('invoiceTaxToggle')||{}).checked;
+  const taxAmtVal = Math.round(total * 0.05);
   const html = `<!DOCTYPE html><html><head><meta charset="utf-8">
 <title>請款單</title>
-<style>
+<style id="baseStyle">
 *{box-sizing:border-box;margin:0;padding:0;color:#000 !important;}
-@page{size:A5 landscape;margin:5mm 6mm;}
 body{font-family:"標楷體","DFKai-SB",serif;font-size:14px;width:196mm;margin:0 auto;padding:0;}
 .co-name{font-size:20px;font-weight:bold;text-align:center;letter-spacing:2px;}
 .co-sub{font-size:12px;text-align:center;margin-top:2px;}
@@ -2094,11 +2475,30 @@ td:nth-child(2){text-align:left;white-space:normal;}
 .btn-invoice:disabled{background:#aaa;cursor:default;}
 .btn-print{background:#444;color:#fff !important;border:none;border-radius:6px;padding:7px 16px;font-size:14px;font-family:inherit;cursor:pointer;}
 .status-ok{color:#1a7a1a !important;font-weight:bold;font-size:13px;}
-@media print{.action-bar{display:none !important;}}
+@media print{.action-bar{display:none !important;}thead{display:table-row-group;}}
 </style>
+<style id="pageStyle">@page{size:A5 landscape;margin:5mm 6mm;}</style>
+<script>
+function doPrint(mode){
+  var ps=document.getElementById('pageStyle');
+  var tip=document.getElementById('pdfTip');
+  if(mode==='pdf'){
+    ps.textContent='@page{size:A4 portrait;margin:6mm 8mm;}@media print{html{zoom:0.72;}}';
+    document.body.style.width='196mm';
+    if(tip) tip.style.display='inline';
+  } else {
+    ps.textContent='@page{size:A5 landscape;margin:5mm 6mm;}';
+    document.body.style.width='196mm';
+    if(tip) tip.style.display='none';
+  }
+  setTimeout(function(){ window.print(); },80);
+}
+<\/script>
 </head><body>
 <div class="action-bar">
-  <button class="btn-print" onclick="window.print()">🖨 列印</button>
+  <button class="btn-print" onclick="doPrint('print')">🖨 列印（中一刀）</button>
+  <button class="btn-print" style="background:#1a6b3c;" onclick="doPrint('pdf')">📄 儲存 PDF（A4）</button>
+  <span id="pdfTip" style="display:none;font-size:12px;color:#c0392b;font-weight:bold;">← 對話框「目的地」請選「另存為 PDF」</span>
   <button class="btn-invoice" id="invBtn" ${alreadyInvoiced?'disabled':''} onclick="try{window.opener.markInvoicedFromPrint('${client.replace(/'/g,"\\'")}','${month}');this.disabled=true;this.textContent='✓ 已標記請款';document.getElementById('invStatus').textContent='已於月結標記為已請款';}catch(e){alert('標記失敗，請回主畫面手動操作');}">
     ${alreadyInvoiced?'✓ 已標記請款':'✓ 標記已請款'}
   </button>
@@ -2141,11 +2541,11 @@ td:nth-child(2){text-align:left;white-space:normal;}
     </tr>
     <tr>
       <td colspan="8" style="text-align:right;font-size:12px">發票稅額（5%）</td>
-      <td id="taxAmt" style="text-align:right;"></td>
+      <td id="taxAmt" style="text-align:right;">${showTaxOnOpen ? taxAmtVal.toLocaleString() : ''}</td>
     </tr>
     <tr class="total-row">
       <td colspan="8" style="text-align:right;">含稅合計</td>
-      <td id="taxTotal" style="text-align:right;"></td>
+      <td id="taxTotal" style="text-align:right;">${showTaxOnOpen ? (total+taxAmtVal).toLocaleString() : ''}</td>
     </tr>
     <tr class="sign-row">
       <td colspan="5" style="text-align:left;padding-left:8px">請款單位：統森企業有限公司</td>
@@ -2153,10 +2553,52 @@ td:nth-child(2){text-align:left;white-space:normal;}
     </tr>
   </tfoot>
 </table>
+<script>
+var _invHtml, _invFilename;
+function saveInvoiceFile(){
+  var blob=new Blob([_invHtml],{type:'text/html;charset=utf-8'});
+  var a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=_invFilename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(function(){URL.revokeObjectURL(a.href);},1000);
+}
+<\/script>
 </body></html>`;
   const w = window.open('','_blank','width=860,height=700');
   w.document.write(html);
   w.document.close();
+  w._invHtml = html;
+  w._invFilename = '請款單_'+client+'_'+month+'.html';
+}
+
+// ── 印章管理 ──────────────────────────────────────────
+function openSealModal(){
+  document.getElementById('sealModal').style.display='flex';
+  ['big','small'].forEach(k=>{
+    const data=localStorage.getItem('tungshen_seal_'+k);
+    const prev=document.getElementById('seal'+k.charAt(0).toUpperCase()+k.slice(1)+'Preview');
+    if(data) prev.innerHTML='<img src="'+data+'" style="width:100%;height:100%;object-fit:contain">';
+    else prev.innerHTML='<span style="color:#ccc;font-size:12px">未上傳</span>';
+  });
+}
+function closeSealModal(){ document.getElementById('sealModal').style.display='none'; }
+function loadSeal(key, inp){
+  if(!inp.files||!inp.files[0]) return;
+  const reader=new FileReader();
+  reader.onload=function(e){
+    localStorage.setItem('tungshen_seal_'+key, e.target.result);
+    const id='seal'+(key==='big'?'Big':'Small')+'Preview';
+    document.getElementById(id).innerHTML='<img src="'+e.target.result+'" style="width:100%;height:100%;object-fit:contain">';
+  };
+  reader.readAsDataURL(inp.files[0]);
+}
+function clearSeal(key){
+  localStorage.removeItem('tungshen_seal_'+key);
+  const id='seal'+(key==='big'?'Big':'Small')+'Preview';
+  document.getElementById(id).innerHTML='<span style="color:#ccc;font-size:12px">未上傳</span>';
 }
 
 function markInvoicedFromPrint(client, month) {
@@ -2542,16 +2984,281 @@ if(!employees.find(e=>e.id==='emp_liu')){
   if(changed) localStorage.setItem('tungshen_emp',JSON.stringify(employees));
 })();
 let payRecords = lsGet('tungshen_pay', []);
+// 從最新薪資紀錄補入員工欄位（全域函數，Firebase 覆蓋後可再呼叫）
+function autoFillEmpFromPay(){
+  const FIELDS=['base','phone','meal','transport','perfect','labor','health','pension'];
+  let changed=false;
+  employees.forEach(function(e){
+    const allEmpty=FIELDS.every(function(f){return !e[f]||e[f]==='';});
+    if(!allEmpty) return;
+    const recs=payRecords.filter(function(r){return r.empId===e.id;}).sort(function(a,b){return b.month.localeCompare(a.month);});
+    const rec=recs[0]; if(!rec) return;
+    FIELDS.forEach(function(f){if(rec[f]){e[f]=String(rec[f]);changed=true;}});
+  });
+  if(changed){
+    localStorage.setItem('tungshen_emp',JSON.stringify(employees));
+    // Firebase 就緒後推送
+    var _snap=JSON.parse(JSON.stringify(employees));
+    var _t=setInterval(function(){
+      if(!window._tsDb) return;
+      clearInterval(_t);
+      window._tsDb.ref('ts/emp').set(_snap).catch(function(){});
+    },400);
+  }
+  return changed;
+}
+autoFillEmpFromPay();
 let editEmpId  = null, editPayId = null;
 function saveEmps(){ localStorage.setItem('tungshen_emp',  JSON.stringify(employees));  }
 function savePays(){ localStorage.setItem('tungshen_pay',  JSON.stringify(payRecords)); }
 
+// ── 助手出勤打卡 ──────────────────────────────────────────
+// 資料結構: attRecs[empId][dateStr] = {leave:bool, ot:number(時), holOt:number(時)}
+// 未設定 = 出勤(正常上班，無加班)
+const ATT_HELPERS_BASE = [
+  { id:'att_hsieh', name:'謝愷峯' },
+  { id:'att_bai',   name:'白景宏' }
+];
+// 額外助手可動態新增（存 localStorage）
+let attExtraHelpers = (function(){ try{ return JSON.parse(localStorage.getItem('tungshen_att_helpers')||'[]'); }catch(e){ return []; } })();
+function saveAttHelpers(){ localStorage.setItem('tungshen_att_helpers', JSON.stringify(attExtraHelpers)); }
+function getAllAttHelpers(){ return ATT_HELPERS_BASE.concat(attExtraHelpers); }
+
+let attRecs = (function(){ try{ return JSON.parse(localStorage.getItem('tungshen_att')||'{}'); }catch(e){ return {}; } })();
+function saveAttRecs(){
+  localStorage.setItem('tungshen_att', JSON.stringify(attRecs));
+  var _snap=JSON.parse(JSON.stringify(attRecs));
+  (function(){var _t=setInterval(function(){if(!window._tsDb)return;clearInterval(_t);window._tsDb.ref('ts/att').set(_snap).catch(function(){});},300);})();
+}
+
+function addAttHelper(){
+  var name=prompt('新增助手姓名：','');
+  if(!name||!name.trim()) return;
+  name=name.trim();
+  if(getAllAttHelpers().find(function(a){return a.name===name;})){alert('已有此人');return;}
+  attExtraHelpers.push({id:'att_extra_'+Date.now(), name:name});
+  saveAttHelpers();
+  initAttSelectors();
+  renderAttCalendar();
+}
+function removeAttHelper(id){
+  if(!confirm('移除此助手？（打卡紀錄保留）'))return;
+  attExtraHelpers=attExtraHelpers.filter(function(a){return a.id!==id;});
+  saveAttHelpers();
+  initAttSelectors();
+  renderAttCalendar();
+}
+
+function getAttEmpList(){
+  var list=getAllAttHelpers().slice();
+  employees.forEach(function(e){
+    if(e.name && !list.find(function(a){return a.id===e.id||a.name===e.name;})) list.push({id:e.id,name:e.name});
+  });
+  return list;
+}
+
+function initAttSelectors(){
+  var mSel=document.getElementById('attMonth');
+  var eSel=document.getElementById('attEmp');
+  if(!mSel||!eSel) return;
+  var now=new Date(), months=[], curM=mSel.value;
+  for(var i=0;i<12;i++){
+    var d=new Date(now.getFullYear(),now.getMonth()-i,1);
+    months.push(d.getFullYear()+'-'+(String(d.getMonth()+1).padStart(2,'0')));
+  }
+  mSel.innerHTML='';
+  months.forEach(function(m){ var o=document.createElement('option');o.value=m;o.textContent=m;mSel.appendChild(o); });
+  if(curM && months.includes(curM)) mSel.value=curM;
+  var curE=eSel.value;
+  eSel.innerHTML='<option value="">選擇員工</option>';
+  getAttEmpList().forEach(function(e){ var o=document.createElement('option');o.value=e.id;o.textContent=e.name;eSel.appendChild(o); });
+  if(curE) eSel.value=curE;
+  // render extra helper tags
+  var tagsDiv=document.getElementById('attExtraHelperTags');
+  if(tagsDiv){
+    tagsDiv.innerHTML=attExtraHelpers.map(function(h){
+      return '<span style="display:inline-flex;align-items:center;gap:3px;background:#e8f4fd;border:1px solid #2d6a9f;border-radius:12px;padding:2px 8px;font-size:12px;color:#1a3a5c">'+
+        h.name+
+        '<button onclick="removeAttHelper(\''+h.id+'\')" title="移除" style="border:none;background:none;cursor:pointer;color:#c00;font-size:13px;line-height:1;padding:0 0 0 2px">×</button>'+
+        '</span>';
+    }).join('');
+  }
+}
+
+// 開啟單日編輯 popup
+var _attEditDay='', _attEditEmp='';
+function openAttDayEdit(empId, dateStr, isWeekend){
+  if(!empId){ alert('請先選擇員工'); return; }
+  _attEditDay=dateStr; _attEditEmp=empId;
+  var rec=(attRecs[empId]||{})[dateStr]||{};
+  document.getElementById('attEdit_date').textContent=dateStr+(isWeekend?' (假日)':'');
+  document.getElementById('attEdit_leave').checked=!!rec.leave;
+  document.getElementById('attEdit_ot').value=rec.ot||0;
+  document.getElementById('attEdit_holOt').value=rec.holOt||0;
+  document.getElementById('attEdit_holBonus').checked=rec.holBonus!==false;
+  document.getElementById('attEdit_otRow').style.display=isWeekend?'none':'';
+  document.getElementById('attEdit_holOtRow').style.display=isWeekend?'':'none';
+  document.getElementById('attEdit_leaveRow').style.display=isWeekend?'none':'';
+  document.getElementById('attDayModal').style.display='flex';
+}
+function closeAttDayEdit(){ document.getElementById('attDayModal').style.display='none'; }
+function saveAttDayEdit(){
+  var empId=_attEditEmp, ds=_attEditDay;
+  if(!empId||!ds) return;
+  if(!attRecs[empId]) attRecs[empId]={};
+  var leave=document.getElementById('attEdit_leave').checked;
+  var ot=parseFloat(document.getElementById('attEdit_ot').value)||0;
+  var holOt=parseFloat(document.getElementById('attEdit_holOt').value)||0;
+  var holBonus=document.getElementById('attEdit_holBonus').checked;
+  if(!leave && ot===0 && holOt===0){
+    delete attRecs[empId][ds];
+  } else {
+    attRecs[empId][ds]={leave:leave, ot:ot, holOt:holOt, holBonus:holBonus};
+  }
+  saveAttRecs();
+  closeAttDayEdit();
+  renderAttCalendar();
+}
+
+function renderAttCalendar(){
+  var mSel=document.getElementById('attMonth');
+  var eSel=document.getElementById('attEmp');
+  var calDiv=document.getElementById('attCalendar');
+  var sumBar=document.getElementById('attSummaryBar');
+  if(!mSel||!eSel||!calDiv) return;
+  var month=mSel.value, empId=eSel.value;
+  if(!month){ calDiv.innerHTML=''; if(sumBar)sumBar.innerHTML=''; return; }
+  var parts=month.split('-'), yr=+parts[0], mo=+parts[1];
+  var daysInMonth=new Date(yr,mo,0).getDate();
+  var firstDay=new Date(yr,mo-1,1).getDay();
+  var empData=empId?(attRecs[empId]||{}):{};
+  var today=new Date();
+  var todayStr=today.getFullYear()+'-'+String(today.getMonth()+1).padStart(2,'0')+'-'+String(today.getDate()).padStart(2,'0');
+
+  // 統計
+  var workDays=0, leaveDays=0, otHrs=0, holOtHrs=0, holOtDays=0;
+  for(var d=1;d<=daysInMonth;d++){
+    var ds=month+'-'+String(d).padStart(2,'0');
+    var dow=(firstDay+d-1)%7; // 0=Sun,6=Sat
+    var isWE=(dow===0||dow===6);
+    var rec=empData[ds]||{};
+    if(rec.leave){ leaveDays++; }
+    else if(!isWE){ workDays++; otHrs+=rec.ot||0; }
+    else { if(rec.holOt){ holOtHrs+=rec.holOt; if(rec.holBonus!==false) holOtDays++; } }
+  }
+
+  if(sumBar){
+    sumBar.innerHTML=empId
+      ? '出勤 <b style="color:#1a6b3c">'+workDays+'天</b> &nbsp;|&nbsp; 請假 <b style="color:#c0392b">'+leaveDays+'天</b>'
+        +(otHrs?'&nbsp;|&nbsp; 平日加班 <b style="color:#1a3a5c">'+otHrs+'時</b>':'')
+        +(holOtDays?'&nbsp;|&nbsp; 假日加班 <b style="color:#b8860b">'+holOtDays+'次 / '+holOtHrs+'時 → +'+holOtDays*500+'元</b>':'')
+      : '請先選擇員工';
+  }
+
+  var WDAYS=['日','一','二','三','四','五','六'];
+  var html='<table style="border-collapse:separate;border-spacing:3px;min-width:560px;width:100%"><thead><tr>';
+  WDAYS.forEach(function(w,i){
+    var col=i===0?'#c0392b':i===6?'#2d6a9f':'#555';
+    html+='<th style="padding:6px 2px;font-size:13px;color:'+col+';text-align:center">'+w+'</th>';
+  });
+  html+='</tr></thead><tbody><tr>';
+  for(var i=0;i<firstDay;i++) html+='<td></td>';
+
+  // 從出車紀錄取得該員工當月 OT
+  var craneOtByDate={};
+  if(empId && typeof allRec==='function'){
+    var craneName=Object.keys(CRANE_DRIVER).find(function(k){return CRANE_DRIVER[k]===empId;});
+    allRec().filter(function(r){
+      return r.d&&r.d.startsWith(month.replace('-','/'))&&(r.drv===empId||(craneName&&r.k===craneName));
+    }).forEach(function(r){
+      var ds=(r.d||'').replace(/\//g,'-');
+      if(!craneOtByDate[ds]) craneOtByDate[ds]={m:0,n:0,e:0,client:''};
+      craneOtByDate[ds].m+=r.recOtM||0;
+      craneOtByDate[ds].n+=r.recOtN||0;
+      craneOtByDate[ds].e+=r.recOtE||0;
+      if(r.o) craneOtByDate[ds].client=r.o;
+    });
+  }
+
+  var col2=firstDay;
+  for(var d2=1;d2<=daysInMonth;d2++){
+    var ds2=month+'-'+String(d2).padStart(2,'0');
+    var dow2=(firstDay+d2-1)%7;
+    var isWE2=(dow2===0||dow2===6);
+    var rec2=empData[ds2]||{};
+    var isToday=ds2===todayStr;
+    var cot=craneOtByDate[ds2]||{};
+
+    var bg,label='',txtCol,border='1px solid #ddd';
+    if(rec2.leave){ bg='#f8d7da'; label='請假'; txtCol='#721c24'; }
+    else if(isWE2){
+      if(rec2.holOt){ bg=rec2.holBonus!==false?'#fff3cd':'#e8eaf6'; label=(rec2.holBonus!==false?'假日加班':'補假出勤')+'<br>'+rec2.holOt+'時'; txtCol=rec2.holBonus!==false?'#856404':'#3949ab'; }
+      else { bg='#f0f0f0'; txtCol=dow2===0?'#c0392b':'#2d6a9f'; }
+    } else {
+      bg='#e8f5e9'; txtCol='#155724';
+      if(rec2.ot) label='加班 '+rec2.ot+'時';
+    }
+    if(isToday) border='2px solid #1a6b3c';
+
+    // 出車 OT 標籤
+    var otBadges='';
+    if(cot.m) otBadges+='<span style="display:inline-block;background:#fff3cd;color:#856404;font-size:9px;font-weight:700;padding:1px 3px;border-radius:3px;border:1px solid #f0ad00;margin:1px">早+'+cot.m+'H</span>';
+    if(cot.n) otBadges+='<span style="display:inline-block;background:#ffe0b2;color:#e65100;font-size:9px;font-weight:700;padding:1px 3px;border-radius:3px;border:1px solid #ff9800;margin:1px">中+'+cot.n+'H</span>';
+    if(cot.e) otBadges+='<span style="display:inline-block;background:#ede7f6;color:#4527a0;font-size:9px;font-weight:700;padding:1px 3px;border-radius:3px;border:1px solid #7e57c2;margin:1px">晚+'+cot.e+'H</span>';
+
+    var clickFn=empId?'openAttDayEdit(\''+_esc(empId)+'\',\''+ds2+'\','+(isWE2?'true':'false')+')':'';
+    html+='<td onclick="'+clickFn+'" style="cursor:'+(empId?'pointer':'default')+';padding:4px 3px;text-align:center;vertical-align:top;border:'+border+';border-radius:6px;background:'+bg+';min-width:68px;height:60px">';
+    html+='<div style="font-size:13px;color:'+txtCol+';font-weight:'+(isToday?'700':'500')+'">'+d2+'</div>';
+    if(label) html+='<div style="font-size:11px;color:'+txtCol+';margin-top:3px;line-height:1.3">'+label+'</div>';
+    if(otBadges) html+='<div style="margin-top:2px;line-height:1.2">'+otBadges+'</div>';
+    html+='</td>';
+    col2++;
+    if(col2===7 && d2<daysInMonth){ html+='</tr><tr>'; col2=0; }
+  }
+  while(col2>0&&col2<7){ html+='<td></td>'; col2++; }
+  html+='</tr></tbody></table>';
+  calDiv.innerHTML=html;
+}
+function _esc(s){ return String(s).replace(/'/g,"\\'"); }
+
+function attToPayroll(){
+  var mSel=document.getElementById('attMonth'), eSel=document.getElementById('attEmp');
+  if(!mSel||!eSel) return;
+  var month=mSel.value, empId=eSel.value;
+  if(!month||!empId){ alert('請先選擇月份和員工'); return; }
+  var parts=month.split('-'), yr=+parts[0], mo=+parts[1];
+  var daysInMonth=new Date(yr,mo,0).getDate();
+  var firstDay=new Date(yr,mo-1,1).getDay();
+  var empData=attRecs[empId]||{};
+  var workDays=0, holOtDays=0, otHrs=0;
+  for(var d=1;d<=daysInMonth;d++){
+    var ds=month+'-'+String(d).padStart(2,'0');
+    var dow=(firstDay+d-1)%7, isWE=(dow===0||dow===6);
+    var rec=empData[ds]||{};
+    if(!rec.leave && !isWE){ workDays++; otHrs+=rec.ot||0; }
+    if(isWE && rec.holOt) holOtDays++;
+  }
+  openPayModal(null);
+  setTimeout(function(){
+    var eId=document.getElementById('py_empId');
+    if(eId){ eId.value=empId; eId.dispatchEvent(new Event('change')); }
+    setTimeout(function(){
+      var pyM=document.getElementById('py_month'); if(pyM) pyM.value=month;
+      var pyD=document.getElementById('py_days');  if(pyD) pyD.value=workDays;
+      var pyHol=document.getElementById('py_holot'); if(pyHol) pyHol.value=holOtDays;
+      if(typeof calcPayPreview==='function') calcPayPreview();
+    },100);
+  },100);
+}
+
 function showSalaryTab(name, btn){
   document.getElementById('salary-emp-panel').style.display = name==='emp'?'':'none';
+  document.getElementById('salary-att-panel').style.display = name==='att'?'':'none';
   document.getElementById('salary-pay-panel').style.display = name==='pay'?'':'none';
   document.querySelectorAll('#panel-salary .sec-btn').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');
   if(name==='emp') renderEmp();
+  if(name==='att'){ initAttSelectors(); renderAttCalendar(); }
   if(name==='pay') renderPayroll();
 }
 
@@ -2903,11 +3610,19 @@ function updateHolidayPay(){
     const days=parseFloat(document.getElementById('py_days').value)||26;
     daily=base/days;
   }
-  const dayTotal=Math.round(holidayDatesList.reduce((s,x)=>s+daily*(x.half?0.5:1),0));
+  const dayCount=holidayDatesList.reduce((s,x)=>s+(x.half?0.5:1),0);
+  const dayTotal=Math.round(dayCount*daily);
   const extra=parseFloat(document.getElementById('py_holidayExtra').value)||0;
   const total=dayTotal+extra;
   document.getElementById('py_holiday').value=total||'';
-  const htEl=document.getElementById('holidayTotal'); if(htEl) htEl.textContent=total.toLocaleString()+' 元';
+  const htEl=document.getElementById('holidayTotal');
+  if(htEl){
+    let detail='';
+    if(dayCount>0) detail+=Math.round(daily).toLocaleString()+' × '+dayCount+'天 = '+dayTotal.toLocaleString();
+    if(extra) detail+=(detail?' + ':'')+((document.getElementById('py_holidayExtraNote').value||'津貼')+' +'+extra.toLocaleString());
+    if(detail && extra && dayCount>0) detail+=' = <b>'+total.toLocaleString()+'</b>';
+    htEl.innerHTML=(detail?detail+'　':'')+(!detail?total.toLocaleString()+' 元':'');
+  }
   calcPayTotal();
 }
 
@@ -2982,6 +3697,28 @@ function calcPayTotal(){
   document.getElementById('py_deductTotal').textContent=deduct.toLocaleString()+' 元';
   document.getElementById('py_net').textContent=net.toLocaleString()+' 元';
 }
+let _payFolderOpen={};
+function _payRowHtml(r){
+  const emp=employees.find(x=>x.id===r.empId);
+  return '<tr class="pay-data-row">'+
+    '<td style="text-align:center"><input type="checkbox" class="pay-chk" value="'+r.id+'"></td>'+
+    '<td>'+r.month+'</td>'+
+    '<td><strong>'+(emp?emp.name:r.empName)+'</strong></td>'+
+    '<td style="text-align:center">'+(r.days||'—')+'</td>'+
+    '<td style="text-align:right">'+(r.base?parseInt(r.base).toLocaleString():'—')+'</td>'+
+    '<td style="text-align:right;color:#856404">'+(r.addTotal?parseInt(r.addTotal).toLocaleString():'—')+'</td>'+
+    '<td style="text-align:right">'+(r.gross?parseInt(r.gross).toLocaleString():'—')+'</td>'+
+    '<td style="text-align:right;color:#c0392b">'+(r.deductTotal?parseInt(r.deductTotal).toLocaleString():'—')+'</td>'+
+    '<td style="text-align:right"><span class="amount" style="color:#1a6b3c">'+parseInt(r.net||0).toLocaleString()+'</span></td>'+
+    '<td style="font-size:12px;color:#666">'+(r.note||'')+'</td>'+
+    '<td><button class="bs bs-edit" onclick="openPayModal(\''+r.id+'\')">編輯</button> '+
+        '<button class="bs" style="background:#1a6b3c;color:#fff" onclick="printPaySlip(\''+r.id+'\')">薪資單</button> '+
+        '<button class="bs bs-del" onclick="delPay(\''+r.id+'\')">刪除</button></td></tr>';
+}
+function togglePayFolder(m){
+  _payFolderOpen[m]=!_payFolderOpen[m];
+  renderPayroll();
+}
 function renderPayroll(){
   const mf=document.getElementById('salMonthFilter').value;
   const ef=document.getElementById('salEmpFilter').value;
@@ -2995,43 +3732,63 @@ function renderPayroll(){
   const totalNet=rows.reduce((s,r)=>s+(parseFloat(r.net)||0),0);
   document.getElementById('payNoData').style.display=rows.length?'none':'block';
   document.getElementById('paySummary').innerHTML='共 <strong>'+rows.length+'</strong> 筆 | 實發合計 <strong style="color:#1a6b3c">'+totalNet.toLocaleString()+'</strong> 元';
-  const totBase=rows.reduce((s,r)=>s+(parseFloat(r.base)||0),0);
-  const totAdd=rows.reduce((s,r)=>s+(parseFloat(r.addTotal)||0),0);
-  const totGross=rows.reduce((s,r)=>s+(parseFloat(r.gross)||0),0);
-  const totDeduct=rows.reduce((s,r)=>s+(parseFloat(r.deductTotal)||0),0);
-  const totNet=rows.reduce((s,r)=>s+(parseFloat(r.net)||0),0);
-  const footerRow=rows.length?'<tr style="background:#1a3a5c;color:#fff;font-weight:700">'+
-    '<td colspan="2" style="text-align:center">合計</td>'+
-    '<td></td>'+
-    '<td style="text-align:right">'+totBase.toLocaleString()+'</td>'+
-    '<td style="text-align:right;color:#ffd54f">'+totAdd.toLocaleString()+'</td>'+
-    '<td style="text-align:right">'+totGross.toLocaleString()+'</td>'+
-    '<td style="text-align:right;color:#ef9a9a">'+totDeduct.toLocaleString()+'</td>'+
-    '<td style="text-align:right;color:#a5d6a7">'+totNet.toLocaleString()+'</td>'+
-    '<td colspan="2"></td></tr>':'';
-  document.getElementById('payBody').innerHTML=rows.map(r=>{
-    const emp=employees.find(x=>x.id===r.empId);
-    return '<tr>'+
-      '<td style="text-align:center"><input type="checkbox" class="pay-chk" value="'+r.id+'"></td>'+
-      '<td>'+r.month+'</td>'+
-      '<td><strong>'+(emp?emp.name:r.empName)+'</strong></td>'+
-      '<td style="text-align:center">'+(r.days||'—')+'</td>'+
-      '<td style="text-align:right">'+(r.base?parseInt(r.base).toLocaleString():'—')+'</td>'+
-      '<td style="text-align:right;color:#856404">'+(r.addTotal?parseInt(r.addTotal).toLocaleString():'—')+'</td>'+
-      '<td style="text-align:right">'+(r.gross?parseInt(r.gross).toLocaleString():'—')+'</td>'+
-      '<td style="text-align:right;color:#c0392b">'+(r.deductTotal?parseInt(r.deductTotal).toLocaleString():'—')+'</td>'+
-      '<td style="text-align:right"><span class="amount" style="color:#1a6b3c">'+parseInt(r.net||0).toLocaleString()+'</span></td>'+
-      '<td style="font-size:12px;color:#666">'+(r.note||'')+'</td>'+
-      '<td><button class="bs bs-edit" onclick="openPayModal(\''+r.id+'\')">編輯</button> '+
-          '<button class="bs" style="background:#1a6b3c;color:#fff" onclick="printPaySlip(\''+r.id+'\')">薪資單</button> '+
-          '<button class="bs bs-del" onclick="delPay(\''+r.id+'\')">刪除</button></td></tr>';
-  }).join('')+footerRow;
+
+  let html='';
+  if(!mf){
+    // 月份分組模式
+    const months=[...new Set(rows.map(r=>r.month))].sort().reverse();
+    months.forEach(function(m){
+      const mRows=rows.filter(r=>r.month===m);
+      const mNet=mRows.reduce((s,r)=>s+(parseFloat(r.net)||0),0);
+      const isOpen=_payFolderOpen[m]!==false; // 預設展開
+      const icon=isOpen?'📂':'📁';
+      html+='<tr style="background:#1a3a5c;color:#fff;cursor:pointer;user-select:none" onclick="togglePayFolder(\''+m+'\')">'+
+        '<td colspan="11" style="padding:10px 14px;font-weight:700;font-size:14px">'+
+        icon+' '+m+' &nbsp;<span style="font-weight:400;font-size:12px;opacity:.8">（'+mRows.length+'人 | 實發合計 '+mNet.toLocaleString()+' 元）</span></td></tr>';
+      if(isOpen){
+        mRows.forEach(r=>{ html+=_payRowHtml(r); });
+        // 月份小計
+        const mBase=mRows.reduce((s,r)=>s+(parseFloat(r.base)||0),0);
+        const mAdd=mRows.reduce((s,r)=>s+(parseFloat(r.addTotal)||0),0);
+        const mGross=mRows.reduce((s,r)=>s+(parseFloat(r.gross)||0),0);
+        const mDeduct=mRows.reduce((s,r)=>s+(parseFloat(r.deductTotal)||0),0);
+        html+='<tr style="background:#e8f4e8;font-weight:600;font-size:13px">'+
+          '<td colspan="3" style="text-align:center;padding:6px">'+m+' 小計</td>'+
+          '<td></td>'+
+          '<td style="text-align:right">'+mBase.toLocaleString()+'</td>'+
+          '<td style="text-align:right;color:#856404">'+mAdd.toLocaleString()+'</td>'+
+          '<td style="text-align:right">'+mGross.toLocaleString()+'</td>'+
+          '<td style="text-align:right;color:#c0392b">'+mDeduct.toLocaleString()+'</td>'+
+          '<td style="text-align:right;color:#1a6b3c">'+mNet.toLocaleString()+'</td>'+
+          '<td colspan="2"></td></tr>';
+      }
+    });
+  } else {
+    // 單月篩選：平鋪模式
+    rows.forEach(r=>{ html+=_payRowHtml(r); });
+    if(rows.length){
+      const tB=rows.reduce((s,r)=>s+(parseFloat(r.base)||0),0);
+      const tA=rows.reduce((s,r)=>s+(parseFloat(r.addTotal)||0),0);
+      const tG=rows.reduce((s,r)=>s+(parseFloat(r.gross)||0),0);
+      const tD=rows.reduce((s,r)=>s+(parseFloat(r.deductTotal)||0),0);
+      const tN=rows.reduce((s,r)=>s+(parseFloat(r.net)||0),0);
+      html+='<tr style="background:#1a3a5c;color:#fff;font-weight:700">'+
+        '<td colspan="2" style="text-align:center">合計</td><td></td>'+
+        '<td style="text-align:right">'+tB.toLocaleString()+'</td>'+
+        '<td style="text-align:right;color:#ffd54f">'+tA.toLocaleString()+'</td>'+
+        '<td style="text-align:right">'+tG.toLocaleString()+'</td>'+
+        '<td style="text-align:right;color:#ef9a9a">'+tD.toLocaleString()+'</td>'+
+        '<td style="text-align:right;color:#a5d6a7">'+tN.toLocaleString()+'</td>'+
+        '<td colspan="2"></td></tr>';
+    }
+  }
+  document.getElementById('payBody').innerHTML=html;
   // 月份過濾器
-  const months=[...new Set(payRecords.map(r=>r.month))].sort().reverse();
+  const allMonths=[...new Set(payRecords.map(r=>r.month))].sort().reverse();
   const mSel=document.getElementById('salMonthFilter');
   const mCur=mSel.value;
   mSel.innerHTML='<option value="">全部月份</option>';
-  months.forEach(m=>{ const o=document.createElement('option');o.value=m;o.textContent=m;mSel.appendChild(o); });
+  allMonths.forEach(m=>{ const o=document.createElement('option');o.value=m;o.textContent=m;mSel.appendChild(o); });
   if(mCur) mSel.value=mCur;
 }
 function openPayModal(id){
@@ -3090,6 +3847,7 @@ function savePayroll(){
   const rec={
     id:editPayId||Date.now().toString(), month, empId, empName:emp?emp.name:'',
     days:document.getElementById('py_days').value,
+    dailyWage: emp&&emp.dailyWage&&parseFloat(emp.dailyWage)>0 ? parseFloat(emp.dailyWage) : 0,
     base, phone:g('py_phone'), meal:g('py_meal'), transport:g('py_transport'), selfTransport:g('py_selfTransport'), perfect:g('py_perfect'),
     otM:g('py_otM'), otN:g('py_otN'), otE:g('py_otE'),
     boom:g('py_boom'), holiday:g('py_holiday'), holidayDatesArr:holidayDatesList.slice(), holidayExtra:g('py_holidayExtra'), holidayExtraNote:document.getElementById('py_holidayExtraNote').value, ot:g('py_ot'), bonus:g('py_bonus'), tripDatesArr:tripDatesList.slice(),
@@ -3181,7 +3939,7 @@ tr.total td{padding:7px 8px}
   ${r.otE>0?row('夜間加班費',fmt(r.otE),'add',(r.otEDatesArr||[]).map(x=>`${x.date.slice(5)}（${x.hours}H）`).join('、')):''}
   ${r.ot>0?row('加班費',fmt(r.ot),'add',otDates?otDates:''):''}
   ${r.boom>0?row('副桿（'+r.boom+'次）× 300',fmt(r.boom*300),'add',boomDates?'副桿日期：'+boomDates:''):''}
-  ${r.holiday>0?row('假日出勤',fmt(r.holiday),'add',(r.holidayDatesArr||[]).map(x=>x.date.slice(5)+(x.half?'（半）':'')).join('、')+(r.holidayExtra>0?'　'+(r.holidayExtraNote||'額外獎金')+' +'+fmt(r.holidayExtra):'')):''}
+  ${r.holiday>0?row('假日出勤',fmt(r.holiday),'add',(()=>{const daily=r.dailyWage>0?r.dailyWage:(r.days>0?Math.round(r.base/r.days):0);const dc=(r.holidayDatesArr||[]).reduce((s,x)=>s+(x.half?0.5:1),0);const dTotal=Math.round(dc*daily);const extra=r.holidayExtra||0;const dates=(r.holidayDatesArr||[]).map(x=>x.date.slice(5)+(x.half?'（半）':'')).join('、');let detail=dates;if(daily&&dc)detail+=`　日薪${daily.toLocaleString()}×${dc}天=${dTotal.toLocaleString()}`;if(extra)detail+=`　${r.holidayExtraNote||'津貼'}+${extra.toLocaleString()}`;return detail;})()):''}
   ${r.bonus>0?row('多趟獎金',fmt(r.bonus),'add',(r.tripDatesArr&&r.tripDatesArr.length?r.tripDatesArr.slice().sort((a,b)=>a.date<b.date?-1:1).map(x=>`${x.date.slice(5)}（多趟獎金+${x.bonus}）`).join('、'):'')):''}
   <tr class="sub"><td>應發小計</td><td style="text-align:right">${fmt(r.gross)}</td></tr>
   ${r.labor>0?row('勞保','-'+fmt(r.labor),'ded'):''}
@@ -3254,7 +4012,7 @@ function printPaySlipList(recs){
   ${r.otE>0?row('夜間加班費',fmt(r.otE),'add',(r.otEDatesArr||[]).map(x=>`${x.date.slice(5)}（${x.hours}H）`).join('、')):''}
   ${r.ot>0?row('加班費',fmt(r.ot),'add',otDates?otDates:''):''}
   ${r.boom>0?row('副桿（'+r.boom+'次）× 300',fmt(r.boom*300),'add',boomDates?'副桿日期：'+boomDates:''):''}
-  ${r.holiday>0?row('假日出勤',fmt(r.holiday),'add',(r.holidayDatesArr||[]).map(x=>x.date.slice(5)+(x.half?'（半）':'')).join('、')+(r.holidayExtra>0?'　'+(r.holidayExtraNote||'額外獎金')+' +'+fmt(r.holidayExtra):'')):''}
+  ${r.holiday>0?row('假日出勤',fmt(r.holiday),'add',(()=>{const daily=r.dailyWage>0?r.dailyWage:(r.days>0?Math.round(r.base/r.days):0);const dc=(r.holidayDatesArr||[]).reduce((s,x)=>s+(x.half?0.5:1),0);const dTotal=Math.round(dc*daily);const extra=r.holidayExtra||0;const dates=(r.holidayDatesArr||[]).map(x=>x.date.slice(5)+(x.half?'（半）':'')).join('、');let detail=dates;if(daily&&dc)detail+=`　日薪${daily.toLocaleString()}×${dc}天=${dTotal.toLocaleString()}`;if(extra)detail+=`　${r.holidayExtraNote||'津貼'}+${extra.toLocaleString()}`;return detail;})()):''}
   ${r.bonus>0?row('多趟獎金',fmt(r.bonus),'add',(r.tripDatesArr&&r.tripDatesArr.length?r.tripDatesArr.slice().sort((a,b)=>a.date<b.date?-1:1).map(x=>`${x.date.slice(5)}（多趟獎金+${x.bonus}）`).join('、'):'')):''}
   <tr class="sub"><td>應發小計</td><td style="text-align:right">${fmt(r.gross)}</td></tr>
   ${r.labor>0?row('勞保','-'+fmt(r.labor),'ded'):''}
@@ -3740,6 +4498,254 @@ buildMainTabs();buildDropdowns();buildMonthlyDropdowns();updateTop();applyFilter
   if(typeof applyFilters==='function'){applyFilters();updateTop();}
 })();
 
+(function(){
+  if(localStorage.getItem('tungshen_injected_0722_0731_v2')) return;
+  const OLD22=new Set(['j033','j034','j035','j036','j037','j038','j039','j040','j041','j042','j043','j044','j045','j046','j047']);
+  const mk2=(id,d,c,l,t,w,au,bas,fix,sig,ot,k,a,m,f)=>({
+    id,date:'2026/07/'+d,client:c,loc:l,ton:String(t),wt:w||'',
+    aux:!!au,bas:!!bas,fix:!!fix,sig:!!sig,crane:k,
+    amt:a||'',otamt:'',note:m||'',ot:ot||0,peer:'',
+    cash:false,drv:'',early:false,holiday:false,
+    recOtM:0,recOtN:0,recOtE:0,flag:f||0
+  });
+  const rows=[
+    // ── 7/22 修正（取代 j033-j047）──
+    mk2('r220','22','中和','大順路','45','一天',0,0,0,0,0,'珈緯','','單給',0),
+    mk2('r221','22','正弘','鳳山','45','一天+4H',0,0,0,0,0,'宏儒','','單給',0),
+    mk2('r222','22','吉川','大寮','25螃','半天',0,0,0,0,0,'25螃','','單給',0),
+    mk2('r223','22','吊車龍','嶺口','25螃','半天',1,0,0,0,0,'25螃','','單給,請6千+固1千',0),
+    mk2('r224','22','明保','楠梓','25螃','半天',0,0,0,0,0,'特泓','','單給',0),
+    mk2('r225','22','阿嘉','橋頭','45','一天',1,0,0,0,0,'允大','','單給',0),
+    mk2('r226','22','建銓','熱河二街','60','一天',1,1,0,0,0,'60T','','單給,寄請款',0),
+    mk2('r227','22','正弘','長治','45','一天',0,0,1,0,0,'45T','','單給',0),
+    mk2('r228','22','軒東','左營','16','一天',0,0,0,0,0,'16T','','單給',0),
+    mk2('r229','22','軒東','左營','25','一天',0,0,0,0,0,'25尺','','單給',1),
+    mk2('r22a','22','邱小姐(祝旺)','','10','一天',0,0,0,0,0,'天寶','9000','匯(上下分2台,下那台2點才到)9千給8千',0),
+    mk2('r22b','22','黃秀榮','前鎮','60','',0,0,0,1,0,'55T','','單給,請平台1天3萬,揮×2',0),
+    mk2('r22c','22','新樹興','鳥松','60','',0,0,0,0,0,'允大','','單給',0),
+    mk2('r22d','22','綠泉','大寮','45','一天+3H',1,0,0,1,0,'珈緯','','單給',0),
+    mk2('r22e','22','璉宏','鳳山','16','半天',0,0,0,0,0,'吉川','','單給',0),
+    mk2('r22f','22','豐譽鳳山','鳳山火車站','60','18:30-22:00',0,0,0,1,0,'55T','','單給,晚上,揮×2',0),
+    mk2('r22g','22','互茂','大樹','15吊卡','半天',0,0,0,0,0,'豆如','','單給',0),
+    // ── 7/23 ──
+    mk2('r230','23','大昌-宏','楠梓','25螃','半天',0,0,0,0,0,'特泓','','單給',0),
+    mk2('r231','23','互申','仁武','10','半天',0,0,0,0,0,'麗雄','','單給,請4千5給4千',0),
+    mk2('r232','23','天寶','琴雅區','45','半天',0,1,0,0,0,'裕倡','','單給,半天8千,一天1萬3',0),
+    mk2('r233','23','吉川','梓官','25螃','半天',0,0,0,0,0,'麗雄','','單給,請5千5',0),
+    mk2('r234','23','吉川','梓官','25螃','半天',0,0,0,0,0,'富盛','','單給',0),
+    mk2('r235','23','百寬','澄清路','吊卡15','半天',0,0,0,0,0,'豆如','','單給',0),
+    mk2('r236','23','正弘','長治','45','一天',0,0,0,0,0,'宏儒','','單給',0),
+    mk2('r237','23','建銓','熱河二街','60','一天',1,1,0,0,0,'60T','','單給,寄請款',0),
+    mk2('r238','23','建銓','橋頭','25螃','一天',0,0,0,0,0,'25螃','','單給,寄請款',0),
+    mk2('r239','23','邱鐵','林園','45','一天',0,0,0,0,0,'中和','','單給',0),
+    mk2('r23a','23','樹李','大社','25螃','半天',0,0,0,0,0,'特泓','6000','7/23匯給特鴻5千5',0),
+    mk2('r23b','23','旭鑫','屏東','25','半天',0,0,0,0,0,'銓威','5000','單給,7/30匯',0),
+    mk2('r23c','23','邱鐵','林園','45','半天',0,0,0,0,0,'45T','','單給',0),
+    mk2('r23d','23','黃秀榮','前鎮','16','一天',0,0,0,1,0,'16T','','單給',0),
+    mk2('r23e','23','綠泉','大寮','45','一天',1,0,0,1,0,'珈緯','','單給',0),
+    mk2('r23f','23','豐譽','屏東','60','一天',0,0,0,1,0,'55T','','單給',0),
+    // ── 7/24 ──
+    mk2('r240','24','協宏','新中五路','25','半天',0,0,0,0,0,'麗雄','','單給',0),
+    mk2('r241','24','明保','內埔','45','一天',0,0,0,0,0,'億昌','','單給',0),
+    mk2('r242','24','杰新','楠梓','45','半天+1H',0,0,0,0,0,'富盛','','單給',0),
+    mk2('r243','24','欣順發','洲際','60','半天',0,0,0,0,0,'55T','','單給',0),
+    mk2('r244','24','邱鐵','小港','45','半天',0,0,0,0,0,'珈緯','','單給',0),
+    mk2('r245','24','建銓','熱河二街','60','一天',1,1,0,0,0,'60T','','單給,寄請款,下午車壞改請半天',0),
+    mk2('r246','24','建銓','橋頭','25螃','一天',0,0,0,0,0,'25螃','','單給,寄請款',0),
+    mk2('r247','24','軒東','橋頭','45','一天',0,0,0,0,0,'允大','','單給',0),
+    mk2('r248','24','隆天','前鎮','16','半天',0,0,0,0,0,'富安','','單給',0),
+    mk2('r249','24','邱鐵','林園','45','一天',0,0,0,0,0,'45T','','單給',0),
+    mk2('r24a','24','中庄鐵盾','萬丹','45','',0,0,0,0,0,'建祥','13000','以收',0),
+    mk2('r24b','24','順長','仁武','45','一天',0,0,0,0,0,'銓威','','單給',0),
+    mk2('r24c','24','大胖','大發','10','半天',0,0,0,0,0,'16T','4500','以收現',0),
+    mk2('r24d','24','鼎泰','小港','45','',0,0,0,0,0,'珈緯','6000','以收現',0),
+    mk2('r24e','24','邱鐵','林園','45','一天',0,0,0,0,0,'中和','','單給',0),
+    mk2('r24f','24','達威','里港','25','一天',0,0,0,0,0,'建祥','','單給,建寫螃',0),
+    mk2('r24g','24','鼎泰','左營','25','半天',0,0,0,0,0,'富盛','','單給',0),
+    mk2('r24h','24','龍泰','大寮','16','半天',0,0,0,0,0,'麗雄','','單給,沙桶',0),
+    // ── 7/25 ──
+    mk2('r250','25','大樹','大寮','16','一天',0,0,0,0,0,'16T','','單給',0),
+    mk2('r251','25','吉川','仁武','25螃','半天',0,0,0,0,0,'小胖','','單給',0),
+    mk2('r252','25','明保','內埔','45','半天',0,0,0,0,0,'億昌','','單給',0),
+    mk2('r253','25','邱鐵','林園','45','半天',0,0,0,0,0,'阿彬','','單給',0),
+    mk2('r254','25','阿光','六塊厝','45','半天',0,0,0,1,0,'建祥','','單給,指揮手統森的',0),
+    mk2('r255','25','建銓','橋頭','25螃','一天',0,0,0,0,0,'25螃','','單給',0),
+    mk2('r256','25','建銓','十全路','60','半天',1,0,0,0,0,'珈緯','','副3,不跟建銓請款,統森自行吸收',0),
+    mk2('r257','25','海豐','大寮','60','一天',1,0,0,0,0,'55T','','單給',0),
+    mk2('r258','25','健豐','大寮','25螃','半天',0,0,0,0,0,'冠鑫','','單給',0),
+    mk2('r259','25','翔穎','左營','25','半天',0,0,0,0,0,'富盛','','單給',0),
+    mk2('r25a','25','順長','仁武','45','一天',0,0,0,0,0,'順','','單給',0),
+    mk2('r25b','25','黃秀榮','前鎮','60','一天',0,0,0,1,0,'百順','','單給,指揮手統森的,請2萬1,叫車1千',0),
+    mk2('r25c','25','新揚','左營','60','一天',0,0,0,0,0,'富盛','','單給',0),
+    mk2('r25d','25','菜鐵盾','鳳山','16','半天',0,0,0,0,0,'吉川','','單給',0),
+    mk2('r25e','25','邱鐵','林園','45','一天',0,0,0,0,0,'45T','','單給',0),
+    mk2('r25f','25','銓威','左營','25','半天',0,0,0,0,0,'阿嘉','','單給,請6千(加班找銓威請)',0),
+    // ── 7/26 ──
+    mk2('r260','26','明保','台南','45','一天',0,0,0,0,0,'阿咪','','單給,請1萬7給1萬4,禮拜日',0),
+    mk2('r261','26','邱鐵','林園','45','一天',0,0,0,0,0,'阿彬','','單給',0),
+    mk2('r262','26','海豐','大寮','60','一天',1,0,0,0,0,'55T','','單給',0),
+    mk2('r263','26','順長','仁武','25','一天',0,0,0,0,0,'阿嘉','','單給',0),
+    mk2('r264','26','黃秀榮','前鎮','25','一天',0,0,0,1,0,'珈緯','','單給,請1萬2,統2千,叫車1千',0),
+    mk2('r265','26','樹李','','25螃','半天',0,0,0,0,0,'珈瓏','6000','7/26已匯,給珈5千5',0),
+    mk2('r266','26','邱鐵','林園','45','一天',0,0,0,0,0,'45T','','單給',0),
+    mk2('r267','26','鼎泰','左營','45','一天',0,0,0,0,0,'珈緯','','單給',0),
+    // ── 7/27 ──
+    mk2('r270','27','利勝','林園文賢里','25螃','半天',0,0,0,0,0,'銓威','','單給',0),
+    mk2('r271','27','邱鐵','林園','45','一天',0,0,0,0,0,'阿彬','','單給',0),
+    mk2('r272','27','建銓','橋頭','25螃','一天',0,0,0,0,0,'25螃','','單給',0),
+    mk2('r273','27','軒東','左營','25螃','一天',0,0,0,0,0,'富盛','','單給',0),
+    mk2('r274','27','順長','仁武','25','一天',0,0,0,0,0,'阿嘉','','單給',0),
+    mk2('r275','27','順鑫','屏東','10','半天',0,0,0,0,0,'16T','','單給',0),
+    mk2('r276','27','新揚','左營','60','一天',0,0,0,0,0,'55T','','單給',0),
+    mk2('r277','27','邱鐵','林園','45','一天',1,0,0,0,0,'45T','','單給,副2',0),
+    // ── 7/28 ──
+    mk2('r280','28','中和','萬金','25螃','一天',0,0,0,0,0,'小胖','','單給,1天請1萬,連續做2天請1萬',0),
+    mk2('r281','28','吉川','小港','45','半天',0,0,0,0,0,'珈緯','','單給',0),
+    mk2('r282','28','邱鐵','林園','45','一天',0,0,0,0,0,'阿彬','','單給',0),
+    mk2('r283','28','正弘','鳳山','45','一天',0,0,0,0,0,'宏儒','','單給',0),
+    mk2('r284','28','冠名','大寮','16','一天',0,0,0,0,0,'麗雄','','單給',0),
+    mk2('r285','28','建銓','橋頭','25螃','一天',0,0,0,0,0,'25螃','','單給',0),
+    mk2('r286','28','竑樽','駁二','10','一天',0,0,0,0,0,'珈瓏','','單給,請8千',0),
+    mk2('r287','28','海豐','大寮','60','半天+1H',0,0,0,0,0,'55T','','單給,中午加班',0),
+    mk2('r288','28','軒東','左營','25螃','半天',0,0,0,0,0,'麗雄','','單給,給傳統',0),
+    mk2('r289','28','軒東','左營','45','半天',0,0,0,0,0,'珈緯','','單給',0),
+    mk2('r28a','28','健豐','大寮','16','一天',0,0,0,0,0,'吉川','','單給',0),
+    mk2('r28b','28','連政','小港','12','半天',0,0,0,0,0,'珈緯','','單給',0),
+    mk2('r28c','28','黃秀榮','前鎮','16','一天+2H',0,0,0,1,0,'16T','','單給',0),
+    mk2('r28d','28','黃秀榮','前鎮','60','一天+2H',0,0,0,1,0,'60T','','單給',0),
+    mk2('r28e','28','新樹興','鳥松','60','半天',0,0,0,0,0,'55T','','單給',0),
+    mk2('r28f','28','帆布','左營','45','',0,0,0,0,0,'順','7000','以收現',0),
+    mk2('r28g','28','正弘','長治','45','半天',0,0,0,0,0,'中和','','單給',0),
+    mk2('r28h','28','邱鐵','林園','45','一天',0,0,0,0,0,'45T','','單給',0),
+    mk2('r28i','28','鎮億','鳳山','25','半天',0,0,0,0,0,'大樹','','單給',0),
+    // ── 7/29 ──
+    mk2('r290','29','方盛','前鎮','25','半天',0,0,0,0,0,'珈緯','','單給',0),
+    mk2('r291','29','正弘','屏東','45','半天',0,0,0,0,0,'郁倡','','單給',0),
+    mk2('r292','29','吉川','中山路','45','半天',0,0,0,0,0,'能發','','單給',0),
+    mk2('r293','29','同富','鳳山','45','半天',0,0,0,0,0,'郁倡','','單給',0),
+    mk2('r294','29','互茂','鳥松','吊卡15','半天',0,0,0,0,0,'豆如','','',0),
+    mk2('r295','29','建銓','橋頭','25螃','一天',0,0,0,0,0,'25螃','','單給',0),
+    mk2('r296','29','建銓','橋頭','25螃','一天',0,0,0,0,0,'特泓','','單給',0),
+    mk2('r297','29','珈瓏','仁武','45','',0,0,0,0,0,'55T','','',0),
+    mk2('r298','29','竑樽','駁二','10','一天',0,0,0,0,0,'珈瓏','','單給,請8千',0),
+    mk2('r299','29','海豐','左營-橋頭','25','半天',0,0,0,0,0,'冠鑫','','單給,跑2趟請7千',0),
+    mk2('r29a','29','軒東','左營','25','一天',0,0,0,0,0,'阿嘉','','單給',0),
+    mk2('r29b','29','連政','大社','45','半天',0,0,0,1,0,'車明','','單給,對連請?給車6千,指2千',0),
+    mk2('r29c','29','富盛','大樹','25螃','半天',0,0,0,0,0,'小胖','','',0),
+    mk2('r29d','29','順益','鱗洛','16','半天',0,0,0,0,0,'葉勝峰','','單給,沙桶',0),
+    mk2('r29e','29','新生代','前鎮','10','半天',0,1,0,0,0,'16T','','單給',0),
+    mk2('r29f','29','新揚','左營','45','半天',1,0,0,0,0,'三能','','單給,請7千',0),
+    mk2('r29g','29','利勝','義華路','45','半天',1,0,0,0,0,'宏儒','','單給',0),
+    mk2('r29h','29','吉川','鳳山','25','半天',0,0,0,0,0,'中和','','單給',0),
+    mk2('r29i','29','銓威','旗津','45','半天+2H',0,0,0,0,0,'珈緯','','單給',0),
+    mk2('r29j','29','邱鐵','林園','45','一天',0,0,0,0,0,'45T','','單給',0),
+    mk2('r29k','29','億展','東港','16','半天',0,0,0,0,0,'葉勝峰','','單給',0),
+    mk2('r29l','29','黃秀榮','前鎮','60','',0,0,0,1,0,'60T','','',0),
+    // ── 7/30 ──
+    mk2('r300','30','方盛','前鎮','25','半天',0,0,0,0,0,'珈緯','','單給',0),
+    mk2('r301','30','方盛','小港','10','一天+2H',0,0,0,0,0,'富盛','','單給,一天請9千',0),
+    mk2('r302','30','吉川','林園','45','一天',0,0,0,0,0,'能發','','單給',0),
+    mk2('r303','30','明保','楠梓','45','一天',0,0,0,0,0,'阿彬','','單給',0),
+    mk2('r304','30','建銓','橋頭','25螃','',0,0,0,0,0,'25螃','','',0),
+    mk2('r305','30','海豐','仁武','10','半天',0,0,0,0,0,'安速','','單給',0),
+    mk2('r306','30','軒東','左營','25','一天',0,0,0,0,0,'銓威','','單給',0),
+    mk2('r307','30','隆天','三民區','16','半天',0,0,0,0,0,'16T','','單給',0),
+    mk2('r308','30','珈瓏','仁武','45','',0,0,0,0,0,'55T','','',0),
+    mk2('r309','30','黃秀榮','前鎮','25','',0,0,0,0,0,'珈緯','','單給',0),
+    mk2('r30a','30','菜鐵盾','潮州','25','半天',0,0,0,0,0,'盈華','','單給',0),
+    mk2('r30b','30','達威','里港','25','半天',0,0,0,0,0,'小胖','','單給',0),
+    mk2('r30c','30','億展','小港','10','半天',1,1,0,0,0,'天寶','','單給',0),
+    mk2('r30d','30','連政','楠梓','45','半天+1H',0,0,0,0,0,'中和','','單給',0),
+    mk2('r30e','30','邱鐵','林園','45','一天',0,0,0,0,0,'45T','','單給',0),
+    mk2('r30f','30','土米漢','仁武','16','半天',0,0,0,0,0,'16T','5000','以收現',0),
+    mk2('r30g','30','麗雄','左營','45螃','半天',0,0,0,0,0,'中和','','單給',0),
+    mk2('r30h','30','全鷹','長治','45','半天',0,0,0,0,0,'宏儒','','單給',0),
+    mk2('r30i','30','黃秀榮','前鎮','60','',0,0,0,1,0,'60T','','請平台2萬5',0),
+    mk2('r30j','30','邱鐵','小港','45','一天',0,0,0,0,0,'阿彬','','單給',0),
+    // ── 7/31 ──
+    mk2('r310','31','建銓','橋頭','25螃','',0,0,0,0,0,'25螃','','',0),
+    mk2('r311','31','邱鐵','林園','45','',0,0,0,0,0,'45T','','',0),
+    mk2('r312','31','峯典','楠梓','70','',0,0,0,0,0,'55T','','收1萬5',0),
+    mk2('r313','31','邱鐵','林園','45','半天',0,0,0,0,0,'45T','','單給',0),
+    mk2('r314','31','珈瓏','仁武','45','',0,0,0,0,0,'55T','','',0),
+    mk2('r315','31','黃秀榮','前鎮','60','',0,0,0,0,0,'60T','','',0),
+    mk2('r316','31','宇建','大寮','120','半天',0,0,0,1,0,'車明','','單給,請3萬給2萬8',0),
+    mk2('r317','31','邱鐵','小港','45','一天',0,0,0,0,0,'阿彬','','單給',0),
+    mk2('r318','31','豐譽','屏東','60','半天',0,0,0,1,0,'建祥','','單給,指統森的',0),
+    mk2('r319','31','龍泰','大寮','25螃','一天',0,0,0,0,0,'建祥','','單給,指統森的',0),
+    mk2('r31a','31','冠鑫','左營','45','',0,0,0,0,0,'珈緯','','',0),
+    mk2('r31b','31','星凱','內埔-潮州','17卡吊','半天',0,0,0,0,0,'軒東','','單給,請5千5',0),
+    mk2('r31c','31','海豐','大寮','45','',0,0,0,0,0,'裕昌','','請7千',0),
+    mk2('r31d','31','建銓','龍總','25','一天',0,0,0,0,0,'裕倡','','單給',0),
+    mk2('r31e','31','健豐','大寮','25螃','一天',0,0,0,0,0,'銓威','','單給',0),
+    mk2('r31f','31','竑樽','駁二','10','一天',0,0,0,0,0,'璉陞','','單給',0),
+  ];
+  const e=(JSON.parse(localStorage.getItem('tungshen_newrec')||'[]')).filter(r=>!OLD22.has(r.id));
+  const ids=new Set(e.map(r=>r.id));
+  const merged=[...e,...rows.filter(r=>!ids.has(r.id))];
+  localStorage.setItem('tungshen_newrec',JSON.stringify(merged));
+  localStorage.setItem('tungshen_injected_0722_0731_v2','1');
+  if(typeof applyFilters==='function'){applyFilters();updateTop();}
+  // Firebase 可能在注入後才初始化並覆蓋 localStorage，捕獲合併結果後輪詢推送
+  (function(){
+    var _snap=merged.slice();
+    var _rmIds=OLD22;
+    var _t=setInterval(function(){
+      if(!window._tsDb) return;
+      clearInterval(_t);
+      window._tsDb.ref('ts/newrec').once('value').then(function(s){
+        var fb=s.val()||[];
+        var fbFiltered=fb.filter(function(r){return!_rmIds.has(r.id);});
+        var fbIds=new Set(fbFiltered.map(function(r){return r.id;}));
+        var toAdd=_snap.filter(function(r){return!fbIds.has(r.id);});
+        var final=[].concat(fbFiltered,toAdd);
+        window._tsDb.ref('ts/newrec').set(final).catch(function(){});
+      }).catch(function(){});
+    },300);
+  })();
+})();
+
+// 一次性：70T 七月份美光光電全批加早+1H 晚+1H
+(function(){
+  if(localStorage.getItem('tungshen_ot_美光_202507')) return;
+  var e = JSON.parse(localStorage.getItem('tungshen_newrec')||'[]');
+  // 更新已有的 newRecords
+  e.forEach(function(r){
+    if(r.crane==='70T' && (r.date||'').startsWith('2026/07') && r.client==='美光光電'){
+      r.recOtM=1; r.recOtE=1; r.early=true;
+    }
+  });
+  // 補上 RAW rawIdx 2053/2054/2055 (07/07~07/09) 若尚無 newRecord 覆蓋
+  var rawDates = {2053:'2026/07/07', 2054:'2026/07/08', 2055:'2026/07/09'};
+  Object.keys(rawDates).forEach(function(ri){
+    ri = parseInt(ri);
+    var exists = e.find(function(x){return x._rawIdx===ri;});
+    if(!exists){
+      e.push({
+        id: 'ot_mc_'+ri, _rawIdx: ri,
+        date: rawDates[ri], client:'美光光電', loc:'', ton:'', wt:'',
+        aux:false, bas:false, fix:false, sig:false, crane:'70T',
+        amt:'', otamt:'', note:'', ot:'', peer:'',
+        cash:false, drv:'', early:true, holiday:false,
+        recOtM:1, recOtN:0, recOtE:1, flag:0
+      });
+    }
+  });
+  localStorage.setItem('tungshen_newrec', JSON.stringify(e));
+  localStorage.setItem('tungshen_ot_美光_202507','1');
+  if(typeof newRecords!=='undefined') { try{ newRecords.length=0; e.forEach(function(r){newRecords.push(r);}); }catch(ex){} }
+  if(typeof applyFilters==='function'){applyFilters(); if(typeof renderCrane==='function')renderCrane(); updateTop();}
+  // 同步 Firebase
+  (function(){
+    var _snap=e.slice();
+    var _t=setInterval(function(){
+      if(!window._tsDb) return;
+      clearInterval(_t);
+      window._tsDb.ref('ts/newrec').set(_snap).catch(function(){});
+    },300);
+  })();
+})();
+
 const COMPANIES = [
   {n:'(金中)鈦鋼鋁金屬有限公司',a:'台北市杭州南路一段6巷8號1樓',t:'89532796',pm:'',nt:'',n2:'',t2:'',c:'',m:'',p:'',f:''},
   {n:'乙盛企業社',a:'屏東縣九如鄉龍子一街15號',t:'92410966',pm:'匯款',nt:'',n2:'',t2:'',c:'',m:'',p:'',f:''},
@@ -4035,6 +5041,7 @@ function renderCompany(sq) {
   };
   firebase.initializeApp(cfg);
   const db = firebase.database();
+  window._tsDb = db;  // 供注入腳本使用
   let _ready = false, _syncing = false;
 
   // 每個 localStorage key 對應 Firebase 路徑 + 更新 in-memory 變數的函數
@@ -4045,7 +5052,7 @@ function renderCompany(sq) {
     flags:        { ls:'tungshen_flags',         apply: v => { flagOvr=v||{}; } },
     monthly:      { ls:'tungshen_monthly',       apply: v => { monthlyData=v||{}; } },
     checks:       { ls:'tungshen_checks',        apply: v => { checkRecs=v||[]; if(isPanelActive('check')) renderCheckRec(); } },
-    emp:          { ls:'tungshen_emp',           apply: v => { employees=v||[]; } },
+    emp:          { ls:'tungshen_emp',           apply: v => { employees=v||[]; autoFillEmpFromPay(); if(isPanelActive('salary')) renderEmp(); } },
     pay:          { ls:'tungshen_pay',           apply: v => { payRecords=v||[]; } },
     fuel:         { ls:'tungshen_fuel',          apply: v => { fuelRecs=v||[]; if(isPanelActive('fuel')) renderFuel(); } },
     vins:         { ls:'tungshen_vins',          apply: v => { vehicleIns=v||[]; if(isPanelActive('ins')) renderVIns(); } },
@@ -4053,6 +5060,8 @@ function renderCompany(sq) {
     companies:    { ls:'tungshen_companies',     apply: v => { extraCompanies=v||[]; } },
     co_overrides: { ls:'tungshen_co_overrides',  apply: v => { coOverrides=v||{}; } },
     expenses:     { ls:'tungshen_expenses',      apply: v => { expenseRecs=v||[]; if(isPanelActive('expense')) renderExpense(); } },
+    att:          { ls:'tungshen_att',           apply: v => { attRecs=v||{}; if(isPanelActive('salary')) renderAttCalendar(); } },
+    slips:        { ls:'tungshen_slips',         apply: v => { slipDeadlines=v||[]; renderTodoBar(); } },
   };
 
   function isPanelActive(name) {
