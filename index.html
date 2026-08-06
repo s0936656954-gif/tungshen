@@ -5106,10 +5106,42 @@ function renderCompany(sq) {
 
   // tungshen_newrec 沒有獨立 save function，用 localStorage.setItem 攔截
   const _origSet = localStorage.setItem.bind(localStorage);
+
+  // ── 出車記錄安全備份 ──────────────────────────────────
+  function _backupNewrec(val) {
+    try {
+      const arr = JSON.parse(val || '[]');
+      if (!Array.isArray(arr) || arr.length === 0) return;
+      // 本機備份（含時間戳）
+      _origSet('tungshen_newrec_bk', JSON.stringify({t: Date.now(), n: arr.length, d: arr}));
+      // Firebase 每日快照
+      const today = new Date().toISOString().slice(0,10).replace(/-/g,'');
+      const bkKey = 'ts/newrec_bk_' + today;
+      db.ref(bkKey).once('value').then(s => {
+        if (!s.exists()) db.ref(bkKey).set(arr).catch(()=>{});
+      }).catch(()=>{});
+    } catch(e){}
+  }
+
+  // 安全鎖：Firebase 資料為空但本機有記錄時，不允許覆蓋
+  function _safeApplyNewrec(remote) {
+    const localRaw = localStorage.getItem('tungshen_newrec');
+    const local = JSON.parse(localRaw || '[]');
+    const rem = Array.isArray(remote) ? remote : [];
+    if (rem.length === 0 && local.length > 0) {
+      // Firebase 空了但本機有資料 → 推本機資料上去，不覆蓋本機
+      console.warn('[SYNC] Firebase newrec empty, protecting local data, re-pushing...');
+      db.ref('ts/newrec').set(local).catch(()=>{});
+      return false; // 不套用
+    }
+    return true; // 正常套用
+  }
+
   localStorage.setItem = function(key, value) {
     _origSet(key, value);
     if (key === 'tungshen_newrec' && _ready && !_syncing) {
       db.ref('ts/newrec').set(JSON.parse(value)).catch(()=>{});
+      _backupNewrec(value);
     }
   };
 
@@ -5119,12 +5151,15 @@ function renderCompany(sq) {
     _syncing = true;
     for (const [fbk, cfg2] of Object.entries(KEY_MAP)) {
       if (data[fbk] !== undefined) {
+        if (fbk === 'newrec' && !_safeApplyNewrec(data[fbk])) continue;
         _origSet(cfg2.ls, JSON.stringify(data[fbk]));
         try { cfg2.apply(data[fbk]); } catch(e) {}
       }
     }
     _syncing = false;
     _ready = true;
+    // 啟動後備份一次當前 newrec
+    _backupNewrec(localStorage.getItem('tungshen_newrec'));
 
     // Firebase 是空的 → 把本機 localStorage 資料全部上傳
     for (const [fbk, cfg2] of Object.entries(KEY_MAP)) {
@@ -5143,6 +5178,7 @@ function renderCompany(sq) {
       _syncing = true;
       for (const [fbk, cfg2] of Object.entries(KEY_MAP)) {
         if (d[fbk] !== undefined) {
+          if (fbk === 'newrec' && !_safeApplyNewrec(d[fbk])) continue;
           const incoming = JSON.stringify(d[fbk]);
           if (localStorage.getItem(cfg2.ls) !== incoming) {
             _origSet(cfg2.ls, incoming);
