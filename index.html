@@ -184,6 +184,11 @@ footer{text-align:center;padding:14px;color:#999;font-size:12px;}
       <option value="1">已單給 ✓</option>
       <option value="0">未單給 ⚠</option>
     </select>
+    <select id="photoFilter" onchange="applyFilters()">
+      <option value="">照片全部</option>
+      <option value="1">已有照片 ✓</option>
+      <option value="0">尚無照片 ⚠</option>
+    </select>
     <button class="btn btn-reset" onclick="resetFilters()">重置</button>
     <button class="btn btn-add" onclick="openRecModal(null)">＋ 新增出車</button>
   </div>
@@ -192,6 +197,7 @@ footer{text-align:center;padding:14px;color:#999;font-size:12px;}
     <div class="tbl-scroll"><table>
       <thead><tr>
         <th class="ns">簽單</th>
+        <th class="ns">照片</th>
         <th class="sh" id="sh_d"    onclick="showSortMenu('d',this)">日期 <span class="si" id="si_d"></span></th>
         <th class="sh" id="sh_c"    onclick="showSortMenu('c',this)">叫車單位 <span class="si" id="si_c"></span></th>
         <th class="sh" id="sh_l"    onclick="showSortMenu('l',this)">作業地點 <span class="si" id="si_l"></span></th>
@@ -1219,6 +1225,7 @@ localStorage.setItem('tungshen_newrec', JSON.stringify(newRecords));
 let deletedRaw = new Set(lsGetArr('tungshen_deleted'));
 function saveDeleted(){ localStorage.setItem('tungshen_deleted', JSON.stringify([...deletedRaw])); }
 let flagOvr = lsGet('tungshen_flags', {});
+let photoOvr = lsGet('tungshen_photos', {});
 const DEFAULT_LOANS = [
   {id:'l_sr700', company:'統森', name:'SR700 車貸', bank:'', balance:4140000,
    maturity:'2028-08-15', payDay:15, monthly:172000,
@@ -1272,6 +1279,7 @@ const CRANE_DRIVER = {
 };
 
 function saveFlagOvr(){ localStorage.setItem('tungshen_flags', JSON.stringify(flagOvr)); }
+function savePhotoOvr(){ localStorage.setItem('tungshen_photos', JSON.stringify(photoOvr)); }
 function saveLoanRecords(){ localStorage.setItem('tungshen_loans', JSON.stringify(loanRecords)); }
 
 function allRec() {
@@ -1282,10 +1290,12 @@ function allRec() {
     j: r.j ? 'V' : '',
     m: r.m||'',
     f: flagOvr['r'+i]!=null ? (flagOvr['r'+i]?1:0) : r.f,
+    ph: photoOvr['r'+i]!=null ? (photoOvr['r'+i]?1:0) : (r.ph?1:0),
     _new:false, _raw:true, _id:'r'+i, _hidden: overriddenIdx.has(i) || deletedRaw.has(i) || extraIds.has('r'+i)
   })).filter(r=>!r._hidden);
   const extraRecs = newRecords.map(r=>({
     f: flagOvr[r.id]!=null ? (flagOvr[r.id]?1:0) : (r.flag?1:0),
+    ph: photoOvr[r.id]!=null ? (photoOvr[r.id]?1:0) : (r.photo?1:0),
     d:r.date, c:r.client, l:r.loc, t:r.ton, w:r.wt,
     g:r.aux?'V':'', b:r.bas?'V':'', x:r.fix?'V':'', j:r.sig?'V':'', k:r.crane,
     a:r.amt, oa:r.otamt||'', sa:r.sigAmt||'', soa:r.sigOtAmt||'', sa2:r.sig2Amt||'', soa2:r.sig2OtAmt||'', mn:r.miscNote||'', ma:r.miscAmt||'',
@@ -1303,6 +1313,16 @@ function toggleFlag(id) {
   if (!r) return;
   flagOvr[id] = r.f !== 1;
   saveFlagOvr();
+  applyFilters();
+  if (document.getElementById('panel-crane').classList.contains('active')) renderCrane();
+}
+
+function togglePhoto(id) {
+  const all = allRec();
+  const r = all.find(x=>x._id===id);
+  if (!r) return;
+  photoOvr[id] = r.ph !== 1;
+  savePhotoOvr();
   applyFilters();
   if (document.getElementById('panel-crane').classList.contains('active')) renderCrane();
 }
@@ -1508,6 +1528,7 @@ function applyFilters() {
   const wt=document.getElementById('workTimeFilter').value;
   const fg=document.getElementById('flagFilter').value;
   const slip=(document.getElementById('slipFilter')||{}).value||'';
+  const photo=(document.getElementById('photoFilter')||{}).value||'';
   filtered=allRec().filter(r=>{
     if(curMonth!=='all'&&!r.d.startsWith(curMonth)) return false;
     if(cli&&(r.c||'')!==cli) return false;
@@ -1517,6 +1538,7 @@ function applyFilters() {
     const hasSlip=(r.m||'').includes('單給');
     if(slip==='1'&&!hasSlip) return false;
     if(slip==='0'&&hasSlip) return false;
+    if(photo!==''&&String(r.ph)!==photo) return false;
     if(q&&![r.c,r.l,r.k,r.m,r.j,r.t,r.o].join(' ').toLowerCase().includes(q)) return false;
     for(const [col,vals] of Object.entries(columnFilters)){
       const v=String(col==='d'?(r.d||'').slice(0,10):(r[col]||''));
@@ -1847,6 +1869,13 @@ function flagBtn(r){
   '</button>';
 }
 
+function photoBtn(r){
+  const on=r.ph===1;
+  return '<button onclick="togglePhoto(\''+r._id+'\')" style="border:none;background:none;cursor:pointer;padding:2px 4px;font-size:15px;" title="'+(on?'已有照片（點擊取消）':'點擊標記已拍照')+'">'+
+    (on?'<span style="color:#1565c0;font-weight:bold;">📷✓</span>':'<span style="color:#ccc;border:1px solid #ccc;border-radius:2px;padding:0 2px;font-size:11px">照</span>')+
+  '</button>';
+}
+
 function cashBadge(r){ return r.cash?'<span style="background:#1a7a1a;color:#fff;font-size:10px;font-weight:700;border-radius:3px;padding:1px 5px;margin-right:4px">現金</span>':''; }
 function isSundayDate(d){ if(!d) return false; const p=d.replace(/\//g,'-').split('-').map(Number); return new Date(p[0],p[1]-1,p[2]).getDay()===0; }
 function holidayBadge(r){
@@ -1860,6 +1889,7 @@ function rowHtml(r, showDel) {
   const rowStyle = r.holiday ? ' style="background:#fff8e1"' : (r.cash ? ' style="background:#f0fff0"' : '');
   return '<tr class="'+(r.f?'flagged':'')+(r._new?' new-rec':'')+'"'+rowStyle+'>'+
     '<td>'+flagBtn(r)+'</td>'+
+    '<td>'+photoBtn(r)+'</td>'+
     '<td style="cursor:pointer" onclick="startTextEdit(this,\''+r._id+'\',\'d\',\''+_esc(r.d)+'\')">'+holidayBadge(r)+r.d+'</td>'+
     '<td style="cursor:pointer" onclick="startTextEdit(this,\''+r._id+'\',\'c\',\''+_esc(r.c)+'\')"><strong>'+r.c+'</strong></td>'+
     '<td style="cursor:pointer" onclick="startTextEdit(this,\''+r._id+'\',\'l\',\''+_esc(r.l)+'\')">'+r.l+'</td>'+
@@ -1933,6 +1963,7 @@ function resetFilters(){
   document.getElementById('workTimeFilter').value='';
   document.getElementById('flagFilter').value='';
   const sf=document.getElementById('slipFilter'); if(sf) sf.value='';
+  const pf=document.getElementById('photoFilter'); if(pf) pf.value='';
   curMonth='all';
   document.querySelectorAll('#mainMonthTabs .mtab').forEach(b=>b.classList.remove('active'));
   document.querySelector('#mainMonthTabs .mtab').classList.add('active');
@@ -5055,6 +5086,7 @@ function renderCompany(sq) {
     deleted:      { ls:'tungshen_deleted',       apply: v => { deletedRaw=new Set(v||[]); } },
     loans:        { ls:'tungshen_loans',         apply: v => { loanRecords=v||[]; if(isPanelActive('loan')) renderLoan(); } },
     flags:        { ls:'tungshen_flags',         apply: v => { flagOvr=v||{}; } },
+    photos:       { ls:'tungshen_photos',        apply: v => { photoOvr=v||{}; } },
     monthly:      { ls:'tungshen_monthly',       apply: v => { monthlyData=v||{}; } },
     checks:       { ls:'tungshen_checks',        apply: v => { checkRecs=v||[]; if(isPanelActive('check')) renderCheckRec(); } },
     emp:          { ls:'tungshen_emp',           apply: v => { employees=v||[]; autoFillEmpFromPay(); if(isPanelActive('salary')) renderEmp(); } },
@@ -5093,6 +5125,7 @@ function renderCompany(sq) {
   patch('saveDeleted',    'tungshen_deleted');
   patch('saveLoanRecords','tungshen_loans');
   patch('saveFlagOvr',   'tungshen_flags');
+  patch('savePhotoOvr',  'tungshen_photos');
   patch('saveMonthly',   'tungshen_monthly');
   patch('saveCheckRecs', 'tungshen_checks');
   patch('saveEmps',      'tungshen_emp');
